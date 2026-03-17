@@ -17,6 +17,9 @@ public class Profile extends BaseEntity {
     @Column(nullable = false, length = 25)
     private String displayName;
 
+    @Column(nullable = false, length = 25)
+    private String username;
+
     @Column(columnDefinition = "TEXT")
     private String bio;
 
