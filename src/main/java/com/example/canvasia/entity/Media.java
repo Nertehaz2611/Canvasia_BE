@@ -5,19 +5,22 @@ import com.example.canvasia.enums.MediaType;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(
         name = "media",
-        uniqueConstraints = @UniqueConstraint(columnNames ={"post_id", "order_index"})
+        uniqueConstraints = @UniqueConstraint(columnNames ={"post_id", "order_index"}),
+        indexes = {
+                @Index(columnList = "post_id"),
+                @Index(columnList = "user_id")
+        }
 )
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(access = AccessLevel.PRIVATE)
 public class Media extends BaseEntity {
-
-    private String url;
 
     @Enumerated(EnumType.STRING)
     private MediaType type;
@@ -25,11 +28,43 @@ public class Media extends BaseEntity {
     private Integer orderIndex;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id")
+    @JoinColumn(name = "post_id", nullable = false)
     @ToString.Exclude
     private Post post;
 
-    @OneToMany(mappedBy = "media", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<MediaVariant> variants;
+    @Column(name = "user_id", nullable = false, updatable = false)
+    private UUID userId;
+
+    public static Media create(Post post, MediaType type, int orderIndex) {
+        validate(post, type, orderIndex);
+
+        return Media.builder()
+                .type(type)
+                .orderIndex(orderIndex)
+                .post(post)
+                .userId(post.getUser().getId())
+                .build();
+    }
+
+    public void updateOrder(int newIndex) {
+        this.orderIndex = newIndex;
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void ensureOwnerConsistency() {
+        if (post == null || post.getUser() == null || post.getUser().getId() == null) {
+            throw new IllegalStateException("Post owner must exist before persisting media");
+        }
+
+        UUID expectedUserId = post.getUser().getId();
+        if (userId == null) {
+            userId = expectedUserId;
+            return;
+        }
+
+        if (!userId.equals(expectedUserId)) {
+            throw new IllegalStateException("Media userId must match post owner id");
+        }
+    }
 }

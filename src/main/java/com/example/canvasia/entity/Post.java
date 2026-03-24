@@ -4,8 +4,6 @@ import com.example.canvasia.entity.base.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.List;
-
 @Entity
 @Table(
         name = "posts",
@@ -14,31 +12,37 @@ import java.util.List;
         }
 )
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(access = AccessLevel.PRIVATE)
 public class Post extends AuditableEntity {
-
-    @Column(columnDefinition = "TEXT")
-    private String caption;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @ToString.Exclude
     private User user;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<Media> mediaList;
+    @Column(columnDefinition = "TEXT")
+    private String caption;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<Comment> comments;
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
-    @OneToMany(mappedBy = "post", cascade =  CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<PostLike> postLikes;
+    public static Post create(User user, String caption) {
+        validate(user);
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<PostTag> postTags;
+        return Post.builder()
+                .user(user)
+                .caption(caption)
+                .build();
+    }
+
+    public void moveToTrash() {
+            this.isDeleted = true;
+    }
+
+    public void restoreFromTrash() {
+            this.isDeleted = false;
+    }
 }

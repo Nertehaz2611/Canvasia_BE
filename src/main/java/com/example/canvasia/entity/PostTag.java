@@ -6,7 +6,7 @@ import lombok.*;
 
 @Entity
 @Table(
-        name = "post_tags",
+        name = "post_tag",
         uniqueConstraints = @UniqueConstraint(columnNames = {"post_id", "tag_id"}),
         indexes = {
                 @Index(columnList = "post_id"),
@@ -15,7 +15,9 @@ import lombok.*;
 )
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(access = AccessLevel.PRIVATE)
 public class PostTag extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -27,4 +29,13 @@ public class PostTag extends BaseEntity {
     @JoinColumn(name = "tag_id", nullable = false)
     @ToString.Exclude
     private Tag tag;
+
+    public static PostTag create(Post post, Tag tag) {
+            validate(post, tag);
+
+            return PostTag.builder()
+                            .post(post)
+                            .tag(tag)
+                            .build();
+    }
 }
