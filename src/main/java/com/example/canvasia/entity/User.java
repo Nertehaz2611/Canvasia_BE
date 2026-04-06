@@ -1,6 +1,7 @@
 package com.example.canvasia.entity;
 
 import com.example.canvasia.entity.base.AuditableEntity;
+import com.example.canvasia.enums.AuthProvider;
 import com.example.canvasia.exception.DomainValidationException;
 import com.example.canvasia.enums.UserRole;
 import com.example.canvasia.enums.UserStatus;
@@ -39,26 +40,33 @@ public class User extends AuditableEntity {
     @Column(nullable = false, unique = true, length = 25)
     private String username;
 
+    @Column(nullable = false, length = 100)
+    private String displayName;
+
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(nullable = false)
     private String passwordHash;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserRole role;
+    @Enumerated(EnumType.STRING)
+    private AuthProvider provider = AuthProvider.LOCAL;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserStatus status;
+    private UserRole role = UserRole.USER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.ACTIVE;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private Profile profile;
 
-    public static User create(String username, String email, String passwordHash) {
-        validate(username, email, passwordHash);
+    public static User create(String username, String email, String passwordHash, String displayName) {
+        validate(username, email, passwordHash, displayName);
         if (username.isBlank() || email.isBlank() || passwordHash.isBlank()) {
             throw new DomainValidationException(
                     "USER_CREDENTIAL_FIELDS_BLANK",
@@ -68,6 +76,7 @@ public class User extends AuditableEntity {
 
         return User.builder()
                 .username(username)
+                .displayName(displayName)
                 .email(email)
                 .passwordHash(passwordHash)
                 .role(UserRole.USER)

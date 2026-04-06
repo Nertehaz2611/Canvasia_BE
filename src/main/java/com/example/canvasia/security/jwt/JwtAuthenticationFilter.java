@@ -49,26 +49,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 5. Load user từ DB
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // (Phase 2 có thể validate token ở đây: isTokenValid)
+                if (jwtService.isTokenValid(token, userDetails)) {
 
-                // 6. Tạo authentication object
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
-                // 7. Attach request details
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource()
+                                    .buildDetails(request)
+                    );
 
-                // 8. Set vào security context
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    SecurityContextHolder.getContext()
+                            .setAuthentication(authToken);
+                }
             }
 
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
