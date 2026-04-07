@@ -37,7 +37,7 @@ import lombok.ToString;
 @Builder(access = AccessLevel.PRIVATE)
 public class User extends AuditableEntity {
 
-    @Column(nullable = false, unique = true, length = 25)
+    @Column(nullable = false, unique = true, length = 30)
     private String username;
 
     @Column(nullable = false, length = 100)

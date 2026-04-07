@@ -1,5 +1,8 @@
 package com.example.canvasia.service.auth;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import com.example.canvasia.dto.auth.AuthResponse;
 import com.example.canvasia.dto.auth.LoginRequest;
 import com.example.canvasia.dto.auth.RegisterRequest;
@@ -7,9 +10,8 @@ import com.example.canvasia.entity.User;
 import com.example.canvasia.enums.AuthProvider;
 import com.example.canvasia.repository.UserRepository;
 import com.example.canvasia.security.jwt.JwtService;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,10 @@ public class EmailAuthService implements AuthService {
     private final JwtService jwtService;
 
     public AuthResponse register(RegisterRequest request) {
+
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Confirm password does not match password");
+        }
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
@@ -47,7 +53,7 @@ public class EmailAuthService implements AuthService {
 
     public AuthResponse login(LoginRequest request) {
 
-        User user = userRepository.findByUsername(request.getUsername())
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
