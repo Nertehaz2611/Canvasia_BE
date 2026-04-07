@@ -1,4 +1,4 @@
-package com.example.canvasia.service.auth;
+package com.example.canvasia.service.impl;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -9,20 +9,21 @@ import com.example.canvasia.dto.auth.RegisterRequest;
 import com.example.canvasia.entity.User;
 import com.example.canvasia.enums.AuthProvider;
 import com.example.canvasia.repository.UserRepository;
-import com.example.canvasia.security.jwt.JwtService;
+import com.example.canvasia.service.interfaces.LocalCredentialAuthService;
+import com.example.canvasia.service.interfaces.TokenPairFactory;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class EmailAuthService implements AuthService {
+public class LocalCredentialAuthServiceImpl implements LocalCredentialAuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    private final TokenPairFactory tokenPairFactory;
 
+    @Override
     public AuthResponse register(RegisterRequest request) {
-
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("Confirm password does not match password");
         }
@@ -43,16 +44,13 @@ public class EmailAuthService implements AuthService {
         );
 
         user.setProvider(AuthProvider.LOCAL);
-
         userRepository.save(user);
 
-        String token = jwtService.generateToken(user.getUsername());
-
-        return new AuthResponse(token);
+        return tokenPairFactory.issueForUsername(user.getUsername());
     }
 
+    @Override
     public AuthResponse login(LoginRequest request) {
-
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -60,8 +58,6 @@ public class EmailAuthService implements AuthService {
             throw new RuntimeException("Invalid password");
         }
 
-        String token = jwtService.generateToken(user.getUsername());
-
-        return new AuthResponse(token);
+        return tokenPairFactory.issueForUsername(user.getUsername());
     }
 }

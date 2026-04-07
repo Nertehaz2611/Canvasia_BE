@@ -6,9 +6,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.canvasia.dto.auth.AuthResponse;
+import com.example.canvasia.dto.auth.GoogleLoginRequest;
 import com.example.canvasia.dto.auth.LoginRequest;
+import com.example.canvasia.dto.auth.RefreshTokenRequest;
 import com.example.canvasia.dto.auth.RegisterRequest;
-import com.example.canvasia.service.auth.AuthService;
+import com.example.canvasia.service.interfaces.AuthService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +30,15 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/google/login")
+    public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        return authService.loginWithGoogle(request);
+    }
+
+    @PostMapping("/refresh")
+    public AuthResponse refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return authService.refreshToken(request);
     }
 }
