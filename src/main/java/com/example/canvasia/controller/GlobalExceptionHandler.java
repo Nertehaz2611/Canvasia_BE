@@ -55,7 +55,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<?> handleRuntimeException(RuntimeException ex) {
-        return ResponseEntity.badRequest().body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleRuntimeException(RuntimeException ex) {
+        ApiErrorResponse body = new ApiErrorResponse(
+                "RUNTIME_ERROR",
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+
+        return ResponseEntity.badRequest().body(body);
     }
 }
