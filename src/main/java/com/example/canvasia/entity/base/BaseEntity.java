@@ -3,9 +3,10 @@ package com.example.canvasia.entity.base;
 import com.example.canvasia.exception.DomainValidationException;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.Hibernate;
 
 import java.util.UUID;
+
+import org.hibernate.Hibernate;
 
 @Getter
 @MappedSuperclass
@@ -32,16 +33,18 @@ public abstract class BaseEntity {
         }
     }
 
-    @Override
+   @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        if (o == null) return false;
+
+        if (!(o instanceof BaseEntity)) return false;
+
+        if (Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
 
         BaseEntity that = (BaseEntity) o;
 
-        if (id == null || that.id == null) return false;
-
-        return id.equals(that.id);
+        return id != null && id.equals(that.id);
     }
 
     @Override

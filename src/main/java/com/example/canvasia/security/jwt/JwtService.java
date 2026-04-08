@@ -33,8 +33,9 @@ public class JwtService {
     }
 
     public String generateRefreshToken(String username) {
-        Long refreshExpiration = props.getRefreshExpiration() != null
-                ? props.getRefreshExpiration()
+        Long refreshExp = props.getRefreshExpiration();
+        long refreshExpiration = (refreshExp != null)
+                ? refreshExp
                 : props.getExpiration() * 7;
         return buildToken(username, refreshExpiration, REFRESH_TOKEN_TYPE);
     }
@@ -52,7 +53,7 @@ public class JwtService {
     public String extractUsername(String token) {
         Claims claims = extractAllClaims(token);
         if (!isAccessTokenType(claims)) {
-            throw new RuntimeException("Invalid access token");
+            throw new IllegalArgumentException("Invalid access token");
         }
         return claims.getSubject();
     }
@@ -60,7 +61,7 @@ public class JwtService {
     public String extractUsernameFromRefreshToken(String token) {
         Claims claims = extractAllClaims(token);
         if (!isRefreshTokenType(claims)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new IllegalArgumentException("Invalid refresh token");
         }
         return claims.getSubject();
     }

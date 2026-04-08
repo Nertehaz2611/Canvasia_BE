@@ -31,7 +31,7 @@ public class GoogleIdTokenVerifierService {
         try {
             jwt = jwtDecoder.decode(idToken);
         } catch (JwtException ex) {
-            throw new RuntimeException("Invalid Google ID token");
+            throw new IllegalArgumentException("Invalid Google ID token");
         }
 
         validateIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
@@ -41,7 +41,7 @@ public class GoogleIdTokenVerifierService {
         Boolean emailVerified = jwt.getClaim("email_verified");
 
         if (!StringUtils.hasText(email) || !Boolean.TRUE.equals(emailVerified)) {
-            throw new RuntimeException("Google account email is not verified");
+            throw new IllegalArgumentException("Google account email is not verified");
         }
 
         String displayName = jwt.getClaimAsString("name");
@@ -54,13 +54,13 @@ public class GoogleIdTokenVerifierService {
 
     private void validateIssuer(String issuer) {
         if (!"https://accounts.google.com".equals(issuer) && !"accounts.google.com".equals(issuer)) {
-            throw new RuntimeException("Invalid Google token issuer");
+            throw new IllegalArgumentException("Invalid Google token issuer");
         }
     }
 
     private void validateAudience(List<String> audience) {
         if (audience == null || !audience.contains(googleClientId)) {
-            throw new RuntimeException("Google token audience mismatch");
+            throw new IllegalArgumentException("Google token audience mismatch");
         }
     }
 

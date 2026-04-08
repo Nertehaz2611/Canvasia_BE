@@ -22,16 +22,19 @@ public class AuthServiceManager implements AuthService {
     private final GoogleAccountAuthService googleAccountAuthService;
     private final RefreshTokenAuthService refreshTokenAuthService;
 
+    @Override
     public AuthResponse register(RegisterRequest request) {
 
         return localCredentialAuthService.register(request);
     }
 
+    @Override
     public AuthResponse login(LoginRequest request) {
 
         return localCredentialAuthService.login(request);
     }
 
+    @Override
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
 
         return googleAccountAuthService.loginWithGoogle(request);

@@ -24,7 +24,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) {
 
         http
                 // disable csrf (use JWT)
@@ -53,9 +53,9 @@ public class SecurityConfig {
                 )
 
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-                        })
+                        .authenticationEntryPoint((request, response, authException) -> 
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+                        )
                 )
 
                 // ADD JWT FILTER

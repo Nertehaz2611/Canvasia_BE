@@ -24,13 +24,13 @@ public class RefreshTokenAuthServiceImpl implements RefreshTokenAuthService {
         String refreshToken = request.getRefreshToken();
 
         if (!jwtService.isRefreshTokenValid(refreshToken)) {
-            throw new RuntimeException("Invalid or expired refresh token");
+            throw new IllegalArgumentException("Invalid or expired refresh token");
         }
 
         String username = jwtService.extractUsernameFromRefreshToken(refreshToken);
 
         userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         return tokenPairFactory.issueForUsername(username);
     }
