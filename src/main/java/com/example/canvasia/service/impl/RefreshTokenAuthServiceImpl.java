@@ -30,7 +30,7 @@ public class RefreshTokenAuthServiceImpl implements RefreshTokenAuthService {
         String username = jwtService.extractUsernameFromRefreshToken(refreshToken);
 
         userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         return tokenPairFactory.issueForUsername(username);
     }
