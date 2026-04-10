@@ -2,8 +2,21 @@ package com.example.canvasia.entity;
 
 import com.example.canvasia.entity.base.BaseEntity;
 import com.example.canvasia.exception.DomainValidationException;
-import jakarta.persistence.*;
-import lombok.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(
@@ -22,6 +35,9 @@ public class Profile extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String bio;
+
+    @Column(length = 120)
+    private String avatarPublicId;
 
     private String avatarUrl;
 
@@ -58,6 +74,10 @@ public class Profile extends BaseEntity {
 
     public void updateAvatarUrl(String newAvatarUrl) {
         this.avatarUrl = newAvatarUrl;
+    }
+
+    public void updateAvatarPublicId(String newAvatarPublicId) {
+        this.avatarPublicId = newAvatarPublicId;
     }
 
     public void updateWebsite(String newWebsite) {
