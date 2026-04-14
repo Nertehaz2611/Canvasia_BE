@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -26,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+        private static final String API_POSTS_PATTERN = "/api/posts/**";
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -54,6 +57,9 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/webjars/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, API_POSTS_PATTERN).authenticated()
+                        .requestMatchers(HttpMethod.PUT, API_POSTS_PATTERN).authenticated()
+                        .requestMatchers(HttpMethod.DELETE, API_POSTS_PATTERN).authenticated()
                         .requestMatchers(
                                 "/api/private/**",
                                 "/api/profile/**"

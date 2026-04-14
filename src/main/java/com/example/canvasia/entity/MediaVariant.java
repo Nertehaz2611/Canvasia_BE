@@ -1,8 +1,8 @@
 package com.example.canvasia.entity;
 
 import com.example.canvasia.entity.base.BaseEntity;
-import com.example.canvasia.exception.DomainValidationException;
 import com.example.canvasia.enums.MediaVariantType;
+import com.example.canvasia.exception.DomainValidationException;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,6 +31,9 @@ import lombok.ToString;
 @Builder(access = AccessLevel.PRIVATE)
 public class MediaVariant extends BaseEntity {
 
+    @Column(nullable = false, updatable = false)
+    private String publicId;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String url;
 
@@ -43,13 +46,17 @@ public class MediaVariant extends BaseEntity {
     @ToString.Exclude
     private Media media;
 
-    public static MediaVariant create(String url, MediaVariantType type, Media media) {
-        validate(url, type, media);
+    public static MediaVariant create(String publicId, String url, MediaVariantType type, Media media) {
+        validate(publicId, url, type, media);
+        if (publicId.isBlank()) {
+            throw new DomainValidationException("MEDIA_VARIANT_PUBLIC_ID_BLANK", "Media publicId must not be blank");
+        }
         if (url.isBlank()) {
             throw new DomainValidationException("MEDIA_VARIANT_URL_BLANK", "Image url must not be blank");
         }
 
         return MediaVariant.builder()
+                .publicId(publicId)
                 .url(url)
                 .type(type)
                 .media(media)
