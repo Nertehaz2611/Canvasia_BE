@@ -12,6 +12,8 @@ public record PostResponse(
         String caption,
         LocalDateTime createdAt,
         List<MediaItemResponse> media,
-        List<String> tags
+        List<String> tags,
+        long likeCount,
+        boolean likedByMe
 ) {
 }

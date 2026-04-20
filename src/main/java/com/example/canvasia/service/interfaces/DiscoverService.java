@@ -5,7 +5,7 @@ import com.example.canvasia.dto.post.CursorThumbnailFeedResponse;
 
 public interface DiscoverService {
 
-    CursorPostFeedResponse getPostFeed(int limit, String cursor, String tag);
+    CursorPostFeedResponse getPostFeed(int limit, String cursor, String tag, String viewerUsername);
 
     CursorThumbnailFeedResponse getThumbnailFeed(int limit, String cursor);
 }

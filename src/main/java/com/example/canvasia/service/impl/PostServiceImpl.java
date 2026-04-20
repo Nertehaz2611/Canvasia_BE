@@ -18,15 +18,18 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.canvasia.dto.post.CreatePostRequest;
 import com.example.canvasia.dto.post.MediaItemResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
+import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.ReplaceMediaRequest;
 import com.example.canvasia.dto.post.ThumbnailCropRequest;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.Post;
+import com.example.canvasia.entity.PostLike;
 import com.example.canvasia.entity.PostTag;
 import com.example.canvasia.entity.Tag;
 import com.example.canvasia.entity.User;
+import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.repository.UserRepository;
@@ -47,6 +50,7 @@ public class PostServiceImpl implements PostService {
     private final PostRepository postRepository;
     private final PostMediaManager postMediaManager;
     private final PostTagRepository postTagRepository;
+    private final PostLikeRepository postLikeRepository;
     private final PostTagResolver postTagResolver;
     private final PostQueryService postQueryService;
 
@@ -81,7 +85,7 @@ public class PostServiceImpl implements PostService {
 
         replacePostTags(post, mergeTagsFromRequestAndCaption(safeRequest.tags(), safeRequest.caption()));
 
-        return buildPostResponse(post);
+        return buildPostResponse(post, username);
     }
 
     @Override
@@ -164,7 +168,7 @@ public class PostServiceImpl implements PostService {
 
         postMediaManager.normalizeMediaOrder(post.getId());
 
-        return buildPostResponse(post);
+        return buildPostResponse(post, username);
     }
 
     @Override
@@ -205,8 +209,8 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public PostFeedResponse getPostsByUser(String username, int page, int size) {
-        return postQueryService.getPostsByUser(username, page, size);
+    public PostFeedResponse getPostsByUser(String viewerUsername, String username, int page, int size) {
+        return postQueryService.getPostsByUser(viewerUsername, username, page, size);
     }
 
     @Override
@@ -217,8 +221,34 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public PostFeedResponse getPostsByTag(String tag, int page, int size) {
-        return postQueryService.getPostsByTag(tag, page, size);
+    public PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size) {
+        return postQueryService.getPostsByTag(viewerUsername, tag, page, size);
+    }
+
+    @Override
+    @Transactional
+    public PostLikeResponse likePost(String username, UUID postId) {
+        User user = getUserByUsername(username);
+        Post post = getActivePost(postId);
+
+        if (!postLikeRepository.existsByUserUsernameAndPostId(username, postId)) {
+            postLikeRepository.save(PostLike.create(user, post));
+        }
+
+        long likeCount = postLikeRepository.countByPostId(postId);
+        return new PostLikeResponse(postId, likeCount, true);
+    }
+
+    @Override
+    @Transactional
+    public PostLikeResponse unlikePost(String username, UUID postId) {
+        Post post = getActivePost(postId);
+
+        postLikeRepository.findByUserUsernameAndPostId(username, postId)
+                .ifPresent(postLikeRepository::delete);
+
+        long likeCount = postLikeRepository.countByPostId(postId);
+        return new PostLikeResponse(post.getId(), likeCount, false);
     }
 
     private List<MultipartFile> normalizeFiles(List<MultipartFile> files) {
@@ -239,6 +269,16 @@ public class PostServiceImpl implements PostService {
     private Post getOwnedActivePost(String username, UUID postId) {
         Post post = postRepository.findByIdAndUserUsername(postId, username)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found or access denied"));
+        if (Boolean.TRUE.equals(post.getIsDeleted())) {
+            throw new IllegalArgumentException("Post has already been deleted");
+        }
+        return post;
+    }
+
+    private Post getActivePost(UUID postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
         if (Boolean.TRUE.equals(post.getIsDeleted())) {
             throw new IllegalArgumentException("Post has already been deleted");
         }
@@ -344,13 +384,16 @@ public class PostServiceImpl implements PostService {
         postTagRepository.saveAll(postTags);
     }
 
-    private PostResponse buildPostResponse(Post post) {
+    private PostResponse buildPostResponse(Post post, String viewerUsername) {
         List<MediaItemResponse> mediaResponses = postMediaManager.buildOriginalMediaResponses(post.getId());
 
         List<String> tagNames = postTagRepository.findByPostId(post.getId())
                 .stream()
                 .map(postTag -> postTag.getTag().getName())
                 .toList();
+
+        long likeCount = postLikeRepository.countByPostId(post.getId());
+        boolean likedByMe = viewerUsername != null && postLikeRepository.existsByUserUsernameAndPostId(viewerUsername, post.getId());
 
         User user = post.getUser();
         return new PostResponse(
@@ -361,7 +404,9 @@ public class PostServiceImpl implements PostService {
                 post.getCaption(),
                 post.getCreatedAt(),
                 mediaResponses,
-                tagNames
+                tagNames,
+                likeCount,
+                likedByMe
         );
     }
 

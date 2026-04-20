@@ -33,8 +33,8 @@ public class DiscoverServiceImpl implements DiscoverService {
 
     @Override
     @Transactional(readOnly = true)
-    public CursorPostFeedResponse getPostFeed(int limit, String cursor, String tag) {
-        return postQueryService.getDiscoverPostsByCursor(limit, cursor, tag);
+    public CursorPostFeedResponse getPostFeed(int limit, String cursor, String tag, String viewerUsername) {
+        return postQueryService.getDiscoverPostsByCursor(limit, cursor, tag, viewerUsername);
     }
 
     @Override

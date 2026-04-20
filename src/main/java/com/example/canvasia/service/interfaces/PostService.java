@@ -2,6 +2,7 @@ package com.example.canvasia.service.interfaces;
 
 import com.example.canvasia.dto.post.CreatePostRequest;
 import com.example.canvasia.dto.post.PostFeedResponse;
+import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,11 +18,15 @@ public interface PostService {
 
     void deletePost(String username, UUID postId);
 
-    PostFeedResponse getPostsByUser(String username, int page, int size);
+    PostFeedResponse getPostsByUser(String viewerUsername, String username, int page, int size);
 
     PostFeedResponse getArchivedPostsByOwner(String username, int page, int size);
 
-    PostFeedResponse getPostsByTag(String tag, int page, int size);
+    PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size);
 
     void hardDeletePost(String username, UUID postId);
+
+    PostLikeResponse likePost(String username, UUID postId);
+
+    PostLikeResponse unlikePost(String username, UUID postId);
 }

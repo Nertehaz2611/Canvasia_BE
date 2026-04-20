@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.controller.support.PostRequestResolver;
 import com.example.canvasia.dto.post.CreatePostRequest;
+import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.UpdatePostRequest;
@@ -83,13 +85,32 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{postId}/likes")
+    @SecurityRequirement(name = "bearerAuth")
+    public PostLikeResponse likePost(
+            Authentication authentication,
+            @PathVariable UUID postId
+    ) {
+        return postService.likePost(authentication.getName(), postId);
+    }
+
+    @DeleteMapping("/{postId}/likes")
+    @SecurityRequirement(name = "bearerAuth")
+    public PostLikeResponse unlikePost(
+            Authentication authentication,
+            @PathVariable UUID postId
+    ) {
+        return postService.unlikePost(authentication.getName(), postId);
+    }
+
     @GetMapping("/users/{username}")
     public PostFeedResponse getPostsByUser(
+            Authentication authentication,
             @PathVariable String username,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return postService.getPostsByUser(username, page, size);
+        return postService.getPostsByUser(extractViewerUsername(authentication), username, page, size);
     }
 
     @GetMapping("/archive")
@@ -104,11 +125,19 @@ public class PostController {
 
     @GetMapping("/tags/{tag}")
     public PostFeedResponse getPostsByTag(
+            Authentication authentication,
             @PathVariable String tag,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return postService.getPostsByTag(tag, page, size);
+        return postService.getPostsByTag(extractViewerUsername(authentication), tag, page, size);
+    }
+
+    private String extractViewerUsername(Authentication authentication) {
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        return authentication.getName();
     }
 
 }
