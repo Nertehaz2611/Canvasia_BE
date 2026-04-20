@@ -20,8 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.controller.support.PostRequestResolver;
 import com.example.canvasia.dto.post.CreatePostRequest;
-import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
+import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 import com.example.canvasia.service.interfaces.PostService;

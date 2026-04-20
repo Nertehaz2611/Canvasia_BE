@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
         private static final String API_POSTS_PATTERN = "/api/posts/**";
+        private static final String API_COMMENTS_PATTERN = "/api/comments/**";
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -58,8 +59,11 @@ public class SecurityConfig {
                                 "/webjars/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, API_POSTS_PATTERN).authenticated()
+                        .requestMatchers(HttpMethod.POST, API_COMMENTS_PATTERN).authenticated()
                         .requestMatchers(HttpMethod.PUT, API_POSTS_PATTERN).authenticated()
+                        .requestMatchers(HttpMethod.PUT, API_COMMENTS_PATTERN).authenticated()
                         .requestMatchers(HttpMethod.DELETE, API_POSTS_PATTERN).authenticated()
+                        .requestMatchers(HttpMethod.DELETE, API_COMMENTS_PATTERN).authenticated()
                         .requestMatchers(
                                 "/api/private/**",
                                 "/api/profile/**"
