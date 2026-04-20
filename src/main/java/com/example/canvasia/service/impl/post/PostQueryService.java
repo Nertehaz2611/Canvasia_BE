@@ -30,7 +30,7 @@ public class PostQueryService {
     private final DiscoverCursorCodec discoverCursorCodec;
 
     @Transactional(readOnly = true)
-    public CursorPostFeedResponse getDiscoverPostsByCursor(int limit, String cursor, String tag) {
+    public CursorPostFeedResponse getDiscoverPostsByCursor(int limit, String cursor, String tag, String viewerUsername) {
         int safeLimit = clampPageSize(limit, MAX_POST_PAGE_SIZE);
         DiscoverCursorCodec.DecodedPostCursor decodedCursor = discoverCursorCodec.decodePostCursor(cursor);
         boolean hasCursor = decodedCursor.createdAt() != null && decodedCursor.id() != null;
@@ -71,20 +71,20 @@ public class PostQueryService {
 
         boolean hasNext = rows.size() > safeLimit;
         List<Post> itemsSlice = hasNext ? rows.subList(0, safeLimit) : rows;
-        List<PostResponse> items = postFeedAssembler.toPostResponses(itemsSlice);
+        List<PostResponse> items = postFeedAssembler.toPostResponses(itemsSlice, viewerUsername);
         String nextCursor = hasNext ? discoverCursorCodec.encodePostCursor(itemsSlice.get(itemsSlice.size() - 1)) : null;
 
         return new CursorPostFeedResponse(items, safeLimit, nextCursor, hasNext);
     }
 
     @Transactional(readOnly = true)
-    public PostFeedResponse getPostsByUser(String username, int page, int size) {
+    public PostFeedResponse getPostsByUser(String viewerUsername, String username, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
         PageRequest pageable = buildPostPageRequest(safePage, safeSize);
 
         Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedFalse(username, pageable);
-        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent()), safePage, safeSize, posts.hasNext());
+        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), viewerUsername), safePage, safeSize, posts.hasNext());
     }
 
     @Transactional(readOnly = true)
@@ -94,11 +94,11 @@ public class PostQueryService {
         PageRequest pageable = buildPostPageRequest(safePage, safeSize);
 
         Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedTrue(username, pageable);
-        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent()), safePage, safeSize, posts.hasNext());
+        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), username), safePage, safeSize, posts.hasNext());
     }
 
     @Transactional(readOnly = true)
-    public PostFeedResponse getPostsByTag(String tag, int page, int size) {
+    public PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
         PageRequest pageable = buildPostPageRequest(safePage, safeSize);
@@ -112,7 +112,7 @@ public class PostQueryService {
             pageable
         );
 
-        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent()), safePage, safeSize, posts.hasNext());
+        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), viewerUsername), safePage, safeSize, posts.hasNext());
     }
 
     private PageRequest buildPostPageRequest(int safePage, int safeSize) {
