@@ -1,8 +1,22 @@
 package com.example.canvasia.entity;
 
+import java.time.LocalDateTime;
+
 import com.example.canvasia.entity.base.AuditableEntity;
-import jakarta.persistence.*;
-import lombok.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(
@@ -29,6 +43,9 @@ public class Post extends AuditableEntity {
     @Builder.Default
     private Boolean isDeleted = false;
 
+        @Column
+        private LocalDateTime deletedAt;
+
     public static Post create(User user, String caption) {
         validate(user);
 
@@ -38,11 +55,17 @@ public class Post extends AuditableEntity {
                 .build();
     }
 
+        public void updateCaption(String newCaption) {
+                this.caption = newCaption;
+        }
+
     public void moveToTrash() {
             this.isDeleted = true;
+            this.deletedAt = LocalDateTime.now();
     }
 
     public void restoreFromTrash() {
             this.isDeleted = false;
+            this.deletedAt = null;
     }
 }
