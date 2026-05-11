@@ -29,6 +29,7 @@ import com.example.canvasia.entity.PostLike;
 import com.example.canvasia.entity.PostTag;
 import com.example.canvasia.entity.Tag;
 import com.example.canvasia.entity.User;
+import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.PostTagRepository;
@@ -51,6 +52,7 @@ public class PostServiceImpl implements PostService {
     private final PostMediaManager postMediaManager;
     private final PostTagRepository postTagRepository;
     private final PostLikeRepository postLikeRepository;
+    private final CommentRepository commentRepository;
     private final PostTagResolver postTagResolver;
     private final PostQueryService postQueryService;
 
@@ -394,6 +396,7 @@ public class PostServiceImpl implements PostService {
 
         long likeCount = postLikeRepository.countByPostId(post.getId());
         boolean likedByMe = viewerUsername != null && postLikeRepository.existsByUserUsernameAndPostId(viewerUsername, post.getId());
+        long commentCount = commentRepository.countByPostId(post.getId());
 
         User user = post.getUser();
         return new PostResponse(
@@ -405,6 +408,7 @@ public class PostServiceImpl implements PostService {
                 post.getCreatedAt(),
                 mediaResponses,
                 tagNames,
+                commentCount,
                 likeCount,
                 likedByMe
         );

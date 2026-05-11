@@ -13,6 +13,7 @@ public record PostResponse(
         LocalDateTime createdAt,
         List<MediaItemResponse> media,
         List<String> tags,
+        long commentCount,
         long likeCount,
         boolean likedByMe
 ) {

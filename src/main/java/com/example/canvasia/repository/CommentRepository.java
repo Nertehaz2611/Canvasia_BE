@@ -1,19 +1,26 @@
 package com.example.canvasia.repository;
 
-import com.example.canvasia.entity.Comment;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.example.canvasia.entity.Comment;
+
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
+
+    interface PostCommentCountView {
+        UUID getPostId();
+
+        long getCommentCount();
+    }
 
     interface ReplyCountView {
         UUID getParentId();
@@ -27,6 +34,13 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
           and c.parent is null
         """)
     Page<Comment> findRootCommentsByPostId(@Param("postId") UUID postId, Pageable pageable);
+
+    @Query("""
+        select c from Comment c
+        where c.post.isDeleted = false
+        order by c.createdAt desc
+        """)
+    List<Comment> findLatestComments(Pageable pageable);
 
     Optional<Comment> findByIdAndPostId(UUID id, UUID postId);
 
@@ -62,4 +76,14 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
         where c.rootId = :rootId
         """)
     int deleteByRootId(@Param("rootId") UUID rootId);
+
+    @Query("""
+        select c.post.id as postId, count(c.id) as commentCount
+        from Comment c
+        where c.post.id in :postIds
+        group by c.post.id
+        """)
+    List<PostCommentCountView> countByPostIds(@Param("postIds") Collection<UUID> postIds);
+
+    long countByPostId(UUID postId);
 }

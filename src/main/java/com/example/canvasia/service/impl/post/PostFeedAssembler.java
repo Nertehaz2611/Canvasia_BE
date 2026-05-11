@@ -9,6 +9,7 @@ import com.example.canvasia.entity.Post;
 import com.example.canvasia.enums.MediaVariantType;
 import com.example.canvasia.repository.MediaRepository;
 import com.example.canvasia.repository.MediaVariantRepository;
+import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class PostFeedAssembler {
     private final MediaVariantRepository mediaVariantRepository;
     private final PostTagRepository postTagRepository;
         private final PostLikeRepository postLikeRepository;
+        private final CommentRepository commentRepository;
 
         public List<PostResponse> toPostResponses(List<Post> posts, String viewerUsername) {
         if (posts.isEmpty()) {
@@ -62,6 +64,11 @@ public class PostFeedAssembler {
             likeCountByPostId.put(row.getPostId(), row.getLikeCount());
         }
 
+        Map<UUID, Long> commentCountByPostId = new HashMap<>();
+        for (CommentRepository.PostCommentCountView row : commentRepository.countByPostIds(postIds)) {
+            commentCountByPostId.put(row.getPostId(), row.getCommentCount());
+        }
+
         Set<UUID> likedPostIds = new HashSet<>();
         if (viewerUsername != null && !viewerUsername.isBlank()) {
             likedPostIds.addAll(postLikeRepository.findLikedPostIdsByUsernameAndPostIds(viewerUsername, postIds));
@@ -77,6 +84,7 @@ public class PostFeedAssembler {
                         post.getCreatedAt(),
                         toMediaResponses(mediaByPostId.getOrDefault(post.getId(), Collections.emptyList()), originalByMediaId),
                         tagsByPostId.getOrDefault(post.getId(), List.of()),
+                        commentCountByPostId.getOrDefault(post.getId(), 0L),
                         likeCountByPostId.getOrDefault(post.getId(), 0L),
                         likedPostIds.contains(post.getId())
                 ))
