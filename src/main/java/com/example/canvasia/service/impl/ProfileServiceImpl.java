@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.canvasia.dto.profile.AccountSettingsRequest;
 import com.example.canvasia.dto.profile.AvatarUploadResponse;
 import com.example.canvasia.dto.profile.ProfileResponse;
 import com.example.canvasia.dto.profile.ProfileSetupRequest;
@@ -52,6 +53,32 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
+    public ProfileResponse updateAccountSettings(String username, AccountSettingsRequest request) {
+        User user = getUserByUsername(username);
+        Profile profile = ensureProfileForWrite(user);
+
+        String normalizedDisplayName = request.getDisplayName().trim();
+        String normalizedEmail = request.getEmail().trim();
+
+        if (!normalizedEmail.equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmail(normalizedEmail)) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+
+        profile.updateDisplayName(normalizedDisplayName);
+        profile.updateBio(normalizeBlank(request.getBio()));
+        profile.updateWebsite(normalizeBlank(request.getWebsite()));
+
+        user.setDisplayName(normalizedDisplayName);
+        user.setEmail(normalizedEmail);
+
+        profileRepository.save(profile);
+        userRepository.save(user);
+
+        return toProfileResponse(user, profile);
+    }
+
+    @Override
+    @Transactional
     public AvatarUploadResponse uploadAvatar(String username, MultipartFile file) {
         User user = getUserByUsername(username);
         Profile profile = ensureProfileForWrite(user);
@@ -88,10 +115,6 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private ProfileResponse toProfileResponse(User user, Profile profile) {
-        String avatarUrl = profile.getAvatarPublicId() != null
-            ? avatarStorageService.buildDeliveryUrl(profile.getAvatarPublicId())
-            : profile.getAvatarUrl();
-
         return new ProfileResponse(
                 user.getId(),
                 user.getUsername(),
@@ -99,7 +122,7 @@ public class ProfileServiceImpl implements ProfileService {
                 profile.getDisplayName(),
                 profile.getBio(),
             profile.getAvatarPublicId(),
-            avatarUrl,
+            profile.getAvatarUrl(),
                 profile.getWebsite()
         );
     }

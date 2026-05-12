@@ -7,10 +7,12 @@ import com.example.canvasia.dto.comment.CreateCommentRequest;
 import com.example.canvasia.entity.Comment;
 import com.example.canvasia.entity.CommentLike;
 import com.example.canvasia.entity.Post;
+import com.example.canvasia.entity.Profile;
 import com.example.canvasia.entity.User;
 import com.example.canvasia.repository.CommentLikeRepository;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostRepository;
+import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
 import com.example.canvasia.service.interfaces.CommentService;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ public class CommentServiceImpl implements CommentService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final ProfileRepository profileRepository;
 
     @Override
     @Transactional
@@ -173,16 +176,21 @@ public class CommentServiceImpl implements CommentService {
         Map<UUID, Long> replyCountByParent = getReplyCountByParent(collectCommentIds(rootComments, descendants));
         Map<UUID, Long> likeCountByComment = getLikeCountByComment(collectCommentIds(rootComments, descendants));
         Set<UUID> likedCommentIds = getLikedCommentIds(viewerUsername, likeCountByComment.keySet());
+        Map<UUID, String> avatarUrlByUserId = loadAvatarUrls(collectUserIds(rootComments, descendants));
+        CommentRenderContext context = new CommentRenderContext(
+            safeMaxDepth,
+            childrenByParent,
+            replyCountByParent,
+            likeCountByComment,
+            likedCommentIds,
+            avatarUrlByUserId
+        );
 
         List<CommentResponse> items = rootComments.stream()
                 .map(root -> toCommentResponse(
                         root,
                         1,
-                        safeMaxDepth,
-                        childrenByParent,
-                        replyCountByParent,
-                        likeCountByComment,
-                        likedCommentIds
+                    context
                 ))
                 .toList();
 
@@ -199,36 +207,32 @@ public class CommentServiceImpl implements CommentService {
                 .map(CommentRepository.ReplyCountView::getReplyCount)
                 .orElse(0L);
 
-        return toLeafCommentResponse(comment, likeCount, likedByMe, replyCount);
+        String avatarUrl = profileRepository.findByUserId(comment.getUser().getId())
+            .map(Profile::getAvatarUrl)
+            .orElse(null);
+
+        return toLeafCommentResponse(comment, likeCount, likedByMe, replyCount, avatarUrl);
     }
 
     private CommentResponse toCommentResponse(
             Comment comment,
             int depth,
-            int maxDepth,
-            Map<UUID, List<Comment>> childrenByParent,
-            Map<UUID, Long> replyCountByParent,
-            Map<UUID, Long> likeCountByComment,
-            Set<UUID> likedCommentIds
+            CommentRenderContext context
     ) {
-        long likeCount = likeCountByComment.getOrDefault(comment.getId(), 0L);
-        boolean likedByMe = likedCommentIds.contains(comment.getId());
-        long replyCount = replyCountByParent.getOrDefault(comment.getId(), 0L);
+        long likeCount = context.likeCountByComment.getOrDefault(comment.getId(), 0L);
+        boolean likedByMe = context.likedCommentIds.contains(comment.getId());
+        long replyCount = context.replyCountByParent.getOrDefault(comment.getId(), 0L);
 
         List<CommentResponse> replies;
-        if (depth >= maxDepth) {
+        if (depth >= context.maxDepth) {
             replies = List.of();
         } else {
-            replies = childrenByParent.getOrDefault(comment.getId(), List.of())
+            replies = context.childrenByParent.getOrDefault(comment.getId(), List.of())
                     .stream()
                     .map(child -> toCommentResponse(
                             child,
                             depth + 1,
-                            maxDepth,
-                            childrenByParent,
-                            replyCountByParent,
-                            likeCountByComment,
-                            likedCommentIds
+                            context
                     ))
                     .toList();
         }
@@ -241,6 +245,7 @@ public class CommentServiceImpl implements CommentService {
                 comment.getUser().getId(),
                 comment.getUser().getDisplayName(),
                 comment.getUser().getUsername(),
+                context.avatarUrlByUserId.get(comment.getUser().getId()),
                 comment.getContent(),
                 comment.getCreatedAt(),
                 likeCount,
@@ -250,7 +255,38 @@ public class CommentServiceImpl implements CommentService {
         );
     }
 
-    private CommentResponse toLeafCommentResponse(Comment comment, long likeCount, boolean likedByMe, long replyCount) {
+    private static final class CommentRenderContext {
+        private final int maxDepth;
+        private final Map<UUID, List<Comment>> childrenByParent;
+        private final Map<UUID, Long> replyCountByParent;
+        private final Map<UUID, Long> likeCountByComment;
+        private final Set<UUID> likedCommentIds;
+        private final Map<UUID, String> avatarUrlByUserId;
+
+        private CommentRenderContext(
+                int maxDepth,
+                Map<UUID, List<Comment>> childrenByParent,
+                Map<UUID, Long> replyCountByParent,
+                Map<UUID, Long> likeCountByComment,
+                Set<UUID> likedCommentIds,
+                Map<UUID, String> avatarUrlByUserId
+        ) {
+            this.maxDepth = maxDepth;
+            this.childrenByParent = childrenByParent;
+            this.replyCountByParent = replyCountByParent;
+            this.likeCountByComment = likeCountByComment;
+            this.likedCommentIds = likedCommentIds;
+            this.avatarUrlByUserId = avatarUrlByUserId;
+        }
+    }
+
+    private CommentResponse toLeafCommentResponse(
+            Comment comment,
+            long likeCount,
+            boolean likedByMe,
+            long replyCount,
+            String avatarUrl
+    ) {
         return new CommentResponse(
                 comment.getId(),
                 comment.getPost().getId(),
@@ -259,6 +295,7 @@ public class CommentServiceImpl implements CommentService {
                 comment.getUser().getId(),
                 comment.getUser().getDisplayName(),
                 comment.getUser().getUsername(),
+                avatarUrl,
                 comment.getContent(),
                 comment.getCreatedAt(),
                 likeCount,
@@ -266,6 +303,21 @@ public class CommentServiceImpl implements CommentService {
                 replyCount,
                 List.of()
         );
+    }
+
+    private Map<UUID, String> loadAvatarUrls(Set<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, String> avatarUrlByUserId = new HashMap<>();
+        for (Profile profile : profileRepository.findByUserIdIn(userIds)) {
+            if (profile.getUser() == null) {
+                continue;
+            }
+            avatarUrlByUserId.put(profile.getUser().getId(), profile.getAvatarUrl());
+        }
+        return avatarUrlByUserId;
     }
 
     private Map<UUID, List<Comment>> indexChildrenByParent(List<Comment> descendants) {
@@ -319,6 +371,21 @@ public class CommentServiceImpl implements CommentService {
         }
         for (Comment descendant : descendants) {
             ids.add(descendant.getId());
+        }
+        return ids;
+    }
+
+    private Set<UUID> collectUserIds(List<Comment> roots, List<Comment> descendants) {
+        Set<UUID> ids = new HashSet<>();
+        for (Comment root : roots) {
+            if (root.getUser() != null) {
+                ids.add(root.getUser().getId());
+            }
+        }
+        for (Comment descendant : descendants) {
+            if (descendant.getUser() != null) {
+                ids.add(descendant.getUser().getId());
+            }
         }
         return ids;
     }

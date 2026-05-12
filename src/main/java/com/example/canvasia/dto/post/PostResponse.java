@@ -9,6 +9,7 @@ public record PostResponse(
         UUID userId,
         String displayName,
         String username,
+        String avatarUrl,
         String caption,
         LocalDateTime createdAt,
         List<MediaItemResponse> media,

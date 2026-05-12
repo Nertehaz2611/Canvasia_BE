@@ -1,6 +1,11 @@
 package com.example.canvasia.service.impl;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -14,10 +19,12 @@ import com.example.canvasia.dto.post.CursorThumbnailFeedResponse;
 import com.example.canvasia.dto.post.ThumbnailItemResponse;
 import com.example.canvasia.entity.Comment;
 import com.example.canvasia.entity.MediaVariant;
+import com.example.canvasia.entity.Profile;
 import com.example.canvasia.enums.MediaVariantType;
 import com.example.canvasia.enums.TagType;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.MediaVariantRepository;
+import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.service.impl.post.PostFeedAssembler;
 import com.example.canvasia.service.impl.post.PostQueryService;
@@ -41,6 +48,7 @@ public class DiscoverServiceImpl implements DiscoverService {
     private final DiscoverCursorCodec discoverCursorCodec;
     private final CommentRepository commentRepository;
     private final PostTagRepository postTagRepository;
+    private final ProfileRepository profileRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,6 +94,7 @@ public class DiscoverServiceImpl implements DiscoverService {
     public LatestDiscussionFeedResponse getLatestDiscussions(int limit) {
         int safeLimit = clampPageSize(limit, MAX_LATEST_DISCUSSION_SIZE);
         List<Comment> comments = commentRepository.findLatestComments(PageRequest.of(0, safeLimit));
+        Map<UUID, String> avatarUrlByUserId = loadAvatarUrls(comments);
         List<LatestDiscussionResponse> items = comments.stream()
                 .map(comment -> new LatestDiscussionResponse(
                         comment.getId(),
@@ -93,6 +102,7 @@ public class DiscoverServiceImpl implements DiscoverService {
                         comment.getUser().getId(),
                         comment.getUser().getDisplayName(),
                         comment.getUser().getUsername(),
+                avatarUrlByUserId.get(comment.getUser().getId()),
                         comment.getContent(),
                         comment.getCreatedAt()
                 ))
@@ -106,5 +116,24 @@ public class DiscoverServiceImpl implements DiscoverService {
         int safeLimit = clampPageSize(limit, MAX_LATEST_HASHTAG_SIZE);
         List<String> tags = postTagRepository.findLatestTagNames(TagType.HASHTAG, PageRequest.of(0, safeLimit));
         return new LatestHashtagResponse(tags);
+    }
+
+    private Map<UUID, String> loadAvatarUrls(List<Comment> comments) {
+        if (comments == null || comments.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<UUID> userIds = comments.stream()
+                .map(comment -> comment.getUser().getId())
+                .collect(Collectors.toSet());
+
+        Map<UUID, String> avatarUrlByUserId = new HashMap<>();
+        for (Profile profile : profileRepository.findByUserIdIn(userIds)) {
+            if (profile.getUser() == null) {
+                continue;
+            }
+            avatarUrlByUserId.put(profile.getUser().getId(), profile.getAvatarUrl());
+        }
+        return avatarUrlByUserId;
     }
 }

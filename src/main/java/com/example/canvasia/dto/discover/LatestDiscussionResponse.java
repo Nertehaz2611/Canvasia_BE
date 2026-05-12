@@ -9,6 +9,7 @@ public record LatestDiscussionResponse(
         UUID userId,
         String displayName,
         String username,
+        String avatarUrl,
         String content,
         LocalDateTime createdAt
 ) {

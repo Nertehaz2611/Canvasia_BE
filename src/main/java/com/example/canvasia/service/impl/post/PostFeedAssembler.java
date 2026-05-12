@@ -6,12 +6,14 @@ import com.example.canvasia.dto.post.ThumbnailItemResponse;
 import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.MediaVariant;
 import com.example.canvasia.entity.Post;
+import com.example.canvasia.entity.Profile;
 import com.example.canvasia.enums.MediaVariantType;
 import com.example.canvasia.repository.MediaRepository;
 import com.example.canvasia.repository.MediaVariantRepository;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostTagRepository;
+import com.example.canvasia.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +36,7 @@ public class PostFeedAssembler {
     private final PostTagRepository postTagRepository;
         private final PostLikeRepository postLikeRepository;
         private final CommentRepository commentRepository;
+        private final ProfileRepository profileRepository;
 
         public List<PostResponse> toPostResponses(List<Post> posts, String viewerUsername) {
         if (posts.isEmpty()) {
@@ -74,12 +77,15 @@ public class PostFeedAssembler {
             likedPostIds.addAll(postLikeRepository.findLikedPostIdsByUsernameAndPostIds(viewerUsername, postIds));
         }
 
+        Map<UUID, String> avatarUrlByUserId = loadAvatarUrls(posts.stream().map(post -> post.getUser().getId()).toList());
+
         return posts.stream()
                 .map(post -> new PostResponse(
                         post.getId(),
                         post.getUser().getId(),
                         post.getUser().getDisplayName(),
                         post.getUser().getUsername(),
+                        avatarUrlByUserId.get(post.getUser().getId()),
                         post.getCaption(),
                         post.getCreatedAt(),
                         toMediaResponses(mediaByPostId.getOrDefault(post.getId(), Collections.emptyList()), originalByMediaId),
@@ -121,4 +127,19 @@ public class PostFeedAssembler {
                 })
                 .toList();
     }
+
+        private Map<UUID, String> loadAvatarUrls(List<UUID> userIds) {
+                if (userIds == null || userIds.isEmpty()) {
+                        return Map.of();
+                }
+
+                Map<UUID, String> avatarUrlByUserId = new HashMap<>();
+                for (Profile profile : profileRepository.findByUserIdIn(userIds)) {
+                        if (profile.getUser() == null) {
+                                continue;
+                        }
+                        avatarUrlByUserId.put(profile.getUser().getId(), profile.getAvatarUrl());
+                }
+                return avatarUrlByUserId;
+        }
 }

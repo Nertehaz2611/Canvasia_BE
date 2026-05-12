@@ -27,12 +27,14 @@ import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.Post;
 import com.example.canvasia.entity.PostLike;
 import com.example.canvasia.entity.PostTag;
+import com.example.canvasia.entity.Profile;
 import com.example.canvasia.entity.Tag;
 import com.example.canvasia.entity.User;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.PostTagRepository;
+import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
 import com.example.canvasia.service.impl.post.PostQueryService;
 import com.example.canvasia.service.impl.post.PostTagResolver;
@@ -55,6 +57,7 @@ public class PostServiceImpl implements PostService {
     private final CommentRepository commentRepository;
     private final PostTagResolver postTagResolver;
     private final PostQueryService postQueryService;
+    private final ProfileRepository profileRepository;
 
     @Override
     @Transactional
@@ -399,12 +402,19 @@ public class PostServiceImpl implements PostService {
         long commentCount = commentRepository.countByPostId(post.getId());
 
         User user = post.getUser();
+        String avatarUrl = profileRepository.findByUserId(user.getId())
+                .map(Profile::getAvatarUrl)
+                .orElse(null);
+        String displayName = user.getDisplayName();
+        String username = user.getUsername();
+        String caption = post.getCaption();
         return new PostResponse(
                 post.getId(),
                 user.getId(),
-                user.getDisplayName(),
-                user.getUsername(),
-                post.getCaption(),
+                displayName,
+                username,
+                avatarUrl,
+                caption,
                 post.getCreatedAt(),
                 mediaResponses,
                 tagNames,
