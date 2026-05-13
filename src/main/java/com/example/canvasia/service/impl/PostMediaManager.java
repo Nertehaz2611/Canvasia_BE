@@ -1,5 +1,14 @@
 package com.example.canvasia.service.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.example.canvasia.dto.post.MediaItemResponse;
 import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.MediaVariant;
@@ -9,15 +18,8 @@ import com.example.canvasia.enums.MediaVariantType;
 import com.example.canvasia.repository.MediaRepository;
 import com.example.canvasia.repository.MediaVariantRepository;
 import com.example.canvasia.service.interfaces.PostMediaStorageService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
@@ -101,9 +103,15 @@ public class PostMediaManager {
                 .stream()
                 .collect(Collectors.toMap(variant -> variant.getMedia().getId(), variant -> variant));
 
+        Map<UUID, MediaVariant> thumbnailVariantsByMediaId = mediaVariantRepository
+            .findByMediaIdInAndType(mediaIds, MediaVariantType.THUMBNAIL)
+            .stream()
+            .collect(Collectors.toMap(variant -> variant.getMedia().getId(), variant -> variant));
+
         List<MediaItemResponse> responses = new ArrayList<>();
         for (Media item : media) {
             MediaVariant originalVariant = originalVariantsByMediaId.get(item.getId());
+            MediaVariant thumbnailVariant = thumbnailVariantsByMediaId.get(item.getId());
             if (originalVariant == null) {
                 throw new IllegalStateException("Original media variant is missing for media " + item.getId());
             }
@@ -112,7 +120,9 @@ public class PostMediaManager {
                     item.getId(),
                     item.getOrderIndex(),
                     originalVariant.getPublicId(),
-                    originalVariant.getUrl()
+                    originalVariant.getUrl(),
+                    thumbnailVariant != null ? thumbnailVariant.getPublicId() : null,
+                    thumbnailVariant != null ? thumbnailVariant.getUrl() : null
             ));
         }
 

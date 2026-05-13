@@ -1,22 +1,5 @@
 package com.example.canvasia.service.impl.post;
 
-import com.example.canvasia.dto.post.MediaItemResponse;
-import com.example.canvasia.dto.post.PostResponse;
-import com.example.canvasia.dto.post.ThumbnailItemResponse;
-import com.example.canvasia.entity.Media;
-import com.example.canvasia.entity.MediaVariant;
-import com.example.canvasia.entity.Post;
-import com.example.canvasia.entity.Profile;
-import com.example.canvasia.enums.MediaVariantType;
-import com.example.canvasia.repository.MediaRepository;
-import com.example.canvasia.repository.MediaVariantRepository;
-import com.example.canvasia.repository.CommentRepository;
-import com.example.canvasia.repository.PostLikeRepository;
-import com.example.canvasia.repository.PostTagRepository;
-import com.example.canvasia.repository.ProfileRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +9,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.example.canvasia.dto.post.MediaItemResponse;
+import com.example.canvasia.dto.post.PostResponse;
+import com.example.canvasia.dto.post.ThumbnailItemResponse;
+import com.example.canvasia.entity.Media;
+import com.example.canvasia.entity.MediaVariant;
+import com.example.canvasia.entity.Post;
+import com.example.canvasia.entity.Profile;
+import com.example.canvasia.enums.MediaVariantType;
+import com.example.canvasia.repository.CommentRepository;
+import com.example.canvasia.repository.MediaRepository;
+import com.example.canvasia.repository.MediaVariantRepository;
+import com.example.canvasia.repository.PostLikeRepository;
+import com.example.canvasia.repository.PostTagRepository;
+import com.example.canvasia.repository.ProfileRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
@@ -52,6 +54,11 @@ public class PostFeedAssembler {
 
         Map<UUID, MediaVariant> originalByMediaId = mediaVariantRepository
                 .findByMediaIdInAndType(mediaIds, MediaVariantType.ORIGINAL)
+                .stream()
+                .collect(Collectors.toMap(variant -> variant.getMedia().getId(), variant -> variant));
+
+        Map<UUID, MediaVariant> thumbnailByMediaId = mediaVariantRepository
+                .findByMediaIdInAndType(mediaIds, MediaVariantType.THUMBNAIL)
                 .stream()
                 .collect(Collectors.toMap(variant -> variant.getMedia().getId(), variant -> variant));
 
@@ -88,7 +95,11 @@ public class PostFeedAssembler {
                         avatarUrlByUserId.get(post.getUser().getId()),
                         post.getCaption(),
                         post.getCreatedAt(),
-                        toMediaResponses(mediaByPostId.getOrDefault(post.getId(), Collections.emptyList()), originalByMediaId),
+                        toMediaResponses(
+                                mediaByPostId.getOrDefault(post.getId(), Collections.emptyList()),
+                                originalByMediaId,
+                                thumbnailByMediaId
+                        ),
                         tagsByPostId.getOrDefault(post.getId(), List.of()),
                         commentCountByPostId.getOrDefault(post.getId(), 0L),
                         likeCountByPostId.getOrDefault(post.getId(), 0L),
@@ -113,16 +124,20 @@ public class PostFeedAssembler {
 
     private List<MediaItemResponse> toMediaResponses(
             List<Media> mediaList,
-            Map<UUID, MediaVariant> originalByMediaId
+            Map<UUID, MediaVariant> originalByMediaId,
+            Map<UUID, MediaVariant> thumbnailByMediaId
     ) {
         return mediaList.stream()
                 .map(media -> {
                     MediaVariant original = originalByMediaId.get(media.getId());
+                    MediaVariant thumbnail = thumbnailByMediaId.get(media.getId());
                     return new MediaItemResponse(
                             media.getId(),
                             media.getOrderIndex(),
                             original != null ? original.getPublicId() : null,
-                            original != null ? original.getUrl() : null
+                            original != null ? original.getUrl() : null,
+                            thumbnail != null ? thumbnail.getPublicId() : null,
+                            thumbnail != null ? thumbnail.getUrl() : null
                     );
                 })
                 .toList();
