@@ -1,5 +1,20 @@
 package com.example.canvasia.service.impl;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.canvasia.dto.comment.CommentFeedResponse;
 import com.example.canvasia.dto.comment.CommentLikeResponse;
 import com.example.canvasia.dto.comment.CommentResponse;
@@ -14,24 +29,10 @@ import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
-import com.example.canvasia.service.interfaces.CommentService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
 import static com.example.canvasia.service.impl.support.PagingUtils.clampPageSize;
+import com.example.canvasia.service.interfaces.CommentService;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -125,7 +126,12 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = getCommentById(commentId);
         ensureCommentPostActive(comment);
 
-        if (!comment.getUser().getUsername().equals(username)) {
+        boolean isCommentOwner = comment.getUser().getUsername().equals(username);
+        boolean isPostOwner = comment.getPost() != null
+                && comment.getPost().getUser() != null
+                && comment.getPost().getUser().getUsername().equals(username);
+
+        if (!isCommentOwner && !isPostOwner) {
             throw new IllegalArgumentException("Comment not found or access denied");
         }
 
