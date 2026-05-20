@@ -66,7 +66,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, API_COMMENTS_PATTERN).authenticated()
                         .requestMatchers(
                                 "/api/private/**",
-                                "/api/profile/**"
+                                "/api/profile/**",
+                                "/api/follows/**"
                         ).authenticated()
                         .anyRequest().permitAll()
                 )

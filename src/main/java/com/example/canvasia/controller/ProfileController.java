@@ -3,6 +3,7 @@ package com.example.canvasia.controller;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +34,14 @@ public class ProfileController {
     @GetMapping("/me")
     public ProfileResponse getMyProfile(Authentication authentication) {
         return profileService.getCurrentProfile(authentication.getName());
+    }
+
+    @GetMapping("/users/{username}")
+    public ProfileResponse getProfileByUsername(
+            Authentication authentication,
+            @PathVariable String username
+    ) {
+        return profileService.getProfileByUsername(authentication.getName(), username);
     }
 
     @PutMapping("/setup")

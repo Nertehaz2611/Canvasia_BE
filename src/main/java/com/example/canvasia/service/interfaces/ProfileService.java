@@ -11,6 +11,8 @@ public interface ProfileService {
 
     ProfileResponse getCurrentProfile(String username);
 
+    ProfileResponse getProfileByUsername(String viewerUsername, String username);
+
     ProfileResponse setupProfile(String username, ProfileSetupRequest request);
 
     ProfileResponse updateAccountSettings(String username, AccountSettingsRequest request);

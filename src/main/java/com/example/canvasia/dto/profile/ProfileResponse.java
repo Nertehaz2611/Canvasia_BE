@@ -18,4 +18,7 @@ public class ProfileResponse {
     private String avatarPublicId;
     private String avatarUrl;
     private String website;
+    private long followerCount;
+    private long followingCount;
+    private boolean isFollowing;
 }

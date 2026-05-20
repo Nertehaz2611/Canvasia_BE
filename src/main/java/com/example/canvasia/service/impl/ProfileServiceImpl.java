@@ -10,6 +10,7 @@ import com.example.canvasia.dto.profile.ProfileResponse;
 import com.example.canvasia.dto.profile.ProfileSetupRequest;
 import com.example.canvasia.entity.Profile;
 import com.example.canvasia.entity.User;
+import com.example.canvasia.repository.FollowRepository;
 import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
 import com.example.canvasia.service.interfaces.AvatarStorageService;
@@ -24,13 +25,22 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
     private final AvatarStorageService avatarStorageService;
+    private final FollowRepository followRepository;
 
     @Override
     @Transactional(readOnly = true)
     public ProfileResponse getCurrentProfile(String username) {
         User user = getUserByUsername(username);
         Profile profile = findProfileOrBuild(user);
-        return toProfileResponse(user, profile);
+        return toProfileResponse(user, profile, username, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfileByUsername(String viewerUsername, String username) {
+        User user = getUserByUsername(username);
+        Profile profile = findProfileOrBuild(user);
+        return toProfileResponse(user, profile, viewerUsername, false);
     }
 
     @Override
@@ -48,7 +58,7 @@ public class ProfileServiceImpl implements ProfileService {
         profileRepository.save(profile);
         userRepository.save(user);
 
-        return toProfileResponse(user, profile);
+        return toProfileResponse(user, profile, username, true);
     }
 
     @Override
@@ -74,7 +84,7 @@ public class ProfileServiceImpl implements ProfileService {
         profileRepository.save(profile);
         userRepository.save(user);
 
-        return toProfileResponse(user, profile);
+        return toProfileResponse(user, profile, username, true);
     }
 
     @Override
@@ -114,16 +124,25 @@ public class ProfileServiceImpl implements ProfileService {
                 .orElseGet(() -> Profile.create(user, user.getDisplayName()));
     }
 
-    private ProfileResponse toProfileResponse(User user, Profile profile) {
+    private ProfileResponse toProfileResponse(User user, Profile profile, String viewerUsername, boolean includeEmail) {
+        long followerCount = followRepository.countByFollowingUsername(user.getUsername());
+        long followingCount = followRepository.countByFollowerUsername(user.getUsername());
+        boolean isFollowing = viewerUsername != null
+                && !viewerUsername.equals(user.getUsername())
+                && followRepository.existsByFollowerUsernameAndFollowingUsername(viewerUsername, user.getUsername());
+
         return new ProfileResponse(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail(),
+                includeEmail ? user.getEmail() : null,
                 profile.getDisplayName(),
                 profile.getBio(),
-            profile.getAvatarPublicId(),
-            profile.getAvatarUrl(),
-                profile.getWebsite()
+                profile.getAvatarPublicId(),
+                profile.getAvatarUrl(),
+                profile.getWebsite(),
+                followerCount,
+                followingCount,
+                isFollowing
         );
     }
 
