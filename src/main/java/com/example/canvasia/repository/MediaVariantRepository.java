@@ -30,6 +30,7 @@ public interface MediaVariantRepository extends JpaRepository<MediaVariant, UUID
         select mv from MediaVariant mv
         where mv.type = :type
           and mv.media.post.isDeleted = false
+          and mv.media.post.isPending = false
         order by mv.media.post.createdAt desc, mv.media.id desc
         """)
     List<MediaVariant> findThumbnailDiscoverFirstPage(
@@ -42,6 +43,7 @@ public interface MediaVariantRepository extends JpaRepository<MediaVariant, UUID
         select mv from MediaVariant mv
         where mv.type = :type
           and mv.media.post.isDeleted = false
+          and mv.media.post.isPending = false
           and (
             mv.media.post.createdAt < :cursorCreatedAt
             or (mv.media.post.createdAt = :cursorCreatedAt and mv.media.id < :cursorMediaId)

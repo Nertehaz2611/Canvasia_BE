@@ -103,7 +103,8 @@ public class PostFeedAssembler {
                         tagsByPostId.getOrDefault(post.getId(), List.of()),
                         commentCountByPostId.getOrDefault(post.getId(), 0L),
                         likeCountByPostId.getOrDefault(post.getId(), 0L),
-                        likedPostIds.contains(post.getId())
+                        likedPostIds.contains(post.getId()),
+                        Boolean.TRUE.equals(post.getIsPending())
                 ))
                 .toList();
     }

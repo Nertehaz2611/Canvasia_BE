@@ -16,7 +16,9 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     Page<Post> findByIsDeletedFalse(Pageable pageable);
 
-    Page<Post> findByUserUsernameAndIsDeletedFalse(String username, Pageable pageable);
+    Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingFalse(String username, Pageable pageable);
+
+    Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingTrue(String username, Pageable pageable);
 
     Page<Post> findByUserUsernameAndIsDeletedTrue(String username, Pageable pageable);
 
@@ -33,6 +35,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join post_tag pt on pt.post_id = p.id
                     join tags t on t.id = pt.tag_id
                     where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
                       and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
@@ -46,6 +49,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join post_tag pt on pt.post_id = p.id
                     join tags t on t.id = pt.tag_id
                     where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
                       and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
@@ -64,6 +68,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     @Query("""
         select p from Post p
         where p.isDeleted = false
+          and p.isPending = false
         order by p.createdAt desc, p.id desc
         """)
     List<Post> findDiscoverFirstPage(Pageable pageable);
@@ -71,6 +76,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     @Query("""
         select p from Post p
         where p.isDeleted = false
+          and p.isPending = false
           and (
             p.createdAt < :cursorCreatedAt
             or (p.createdAt = :cursorCreatedAt and p.id < :cursorId)
@@ -90,6 +96,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join post_tag pt on pt.post_id = p.id
                     join tags t on t.id = pt.tag_id
                     where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
                       and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
@@ -113,6 +120,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join post_tag pt on pt.post_id = p.id
                     join tags t on t.id = pt.tag_id
                     where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
                       and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))

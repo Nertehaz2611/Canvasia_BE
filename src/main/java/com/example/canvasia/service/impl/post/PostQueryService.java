@@ -83,8 +83,18 @@ public class PostQueryService {
         int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
         PageRequest pageable = buildPostPageRequest(safePage, safeSize);
 
-        Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedFalse(username, pageable);
+        Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedFalseAndIsPendingFalse(username, pageable);
         return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), viewerUsername), safePage, safeSize, posts.hasNext());
+    }
+
+    @Transactional(readOnly = true)
+    public PostFeedResponse getPendingPostsByOwner(String username, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
+        PageRequest pageable = buildPostPageRequest(safePage, safeSize);
+
+        Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedFalseAndIsPendingTrue(username, pageable);
+        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), username), safePage, safeSize, posts.hasNext());
     }
 
     @Transactional(readOnly = true)

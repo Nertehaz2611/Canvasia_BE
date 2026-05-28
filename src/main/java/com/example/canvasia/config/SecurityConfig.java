@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, API_COMMENTS_PATTERN).authenticated()
                         .requestMatchers(HttpMethod.DELETE, API_POSTS_PATTERN).authenticated()
                         .requestMatchers(HttpMethod.DELETE, API_COMMENTS_PATTERN).authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/pending").authenticated()
                         .requestMatchers(
                                 "/api/private/**",
                                 "/api/profile/**",

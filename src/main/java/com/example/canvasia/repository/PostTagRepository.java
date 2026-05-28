@@ -23,6 +23,7 @@ public interface PostTagRepository extends JpaRepository<PostTag, UUID> {
 		join pt.tag t
 		join pt.post p
 		where p.isDeleted = false
+		  and p.isPending = false
 		  and t.type = :tagType
 		group by t.id, t.name
 		order by max(p.createdAt) desc

@@ -43,8 +43,12 @@ public class Post extends AuditableEntity {
     @Builder.Default
     private Boolean isDeleted = false;
 
-        @Column
-        private LocalDateTime deletedAt;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean isPending = false;
+
+    @Column
+    private LocalDateTime deletedAt;
 
     public static Post create(User user, String caption) {
         validate(user);
@@ -55,17 +59,21 @@ public class Post extends AuditableEntity {
                 .build();
     }
 
-        public void updateCaption(String newCaption) {
-                this.caption = newCaption;
-        }
+    public void updateCaption(String newCaption) {
+        this.caption = newCaption;
+    }
+
+    public void markPending(boolean pending) {
+        this.isPending = pending;
+    }
 
     public void moveToTrash() {
-            this.isDeleted = true;
-            this.deletedAt = LocalDateTime.now();
+        this.isDeleted = true;
+        this.deletedAt = LocalDateTime.now();
     }
 
     public void restoreFromTrash() {
-            this.isDeleted = false;
-            this.deletedAt = null;
+        this.isDeleted = false;
+        this.deletedAt = null;
     }
 }

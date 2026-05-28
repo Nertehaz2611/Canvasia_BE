@@ -16,6 +16,7 @@ public record PostResponse(
         List<String> tags,
         long commentCount,
         long likeCount,
-        boolean likedByMe
+        boolean likedByMe,
+        boolean isPending
 ) {
 }

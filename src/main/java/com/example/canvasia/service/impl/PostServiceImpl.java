@@ -58,6 +58,7 @@ public class PostServiceImpl implements PostService {
     private final PostTagResolver postTagResolver;
     private final PostQueryService postQueryService;
     private final ProfileRepository profileRepository;
+    private final ModerationQueuePublisher moderationQueuePublisher;
 
     @Override
     @Transactional
@@ -90,7 +91,12 @@ public class PostServiceImpl implements PostService {
 
         replacePostTags(post, mergeTagsFromRequestAndCaption(safeRequest.tags(), safeRequest.caption()));
 
-        return buildPostResponse(post, username);
+        PostResponse response = buildPostResponse(post, username);
+        for (MediaItemResponse media : response.media()) {
+            moderationQueuePublisher.publishUpsert(media.mediaId().toString(), media.originalUrl());
+        }
+
+        return response;
     }
 
     @Override
@@ -181,6 +187,11 @@ public class PostServiceImpl implements PostService {
     public void deletePost(String username, UUID postId) {
         Post post = getOwnedActivePost(username, postId);
 
+        List<Media> media = postMediaManager.findByPostIdOrdered(postId);
+        for (Media item : media) {
+            moderationQueuePublisher.publishDelete(item.getId().toString());
+        }
+
         post.moveToTrash();
     }
 
@@ -188,20 +199,27 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public void hardDeletePost(String username, UUID postId) {
         Post post = getOwnedTrashedPost(username, postId);
-        hardDeletePostInternal(post);
+        List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
+        for (Media item : media) {
+            moderationQueuePublisher.publishDelete(item.getId().toString());
+        }
+        hardDeletePostInternal(post, media);
     }
 
     @Transactional
     public int hardDeleteExpiredSoftDeletedPosts(LocalDateTime deletedBefore) {
         List<Post> postsToPurge = postRepository.findByIsDeletedTrueAndDeletedAtBefore(deletedBefore);
         for (Post post : postsToPurge) {
-            hardDeletePostInternal(post);
+            List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
+            for (Media item : media) {
+                moderationQueuePublisher.publishDelete(item.getId().toString());
+            }
+            hardDeletePostInternal(post, media);
         }
         return postsToPurge.size();
     }
 
-    private void hardDeletePostInternal(Post post) {
-        List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
+    private void hardDeletePostInternal(Post post, List<Media> media) {
         postMediaManager.deleteMediaAndAssets(media);
 
         List<PostTag> postTags = postTagRepository.findByPostId(post.getId());
@@ -226,8 +244,35 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
+    public PostFeedResponse getPendingPostsByOwner(String username, int page, int size) {
+        return postQueryService.getPendingPostsByOwner(username, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size) {
         return postQueryService.getPostsByTag(viewerUsername, tag, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PostResponse getPostById(String viewerUsername, UUID postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        if (Boolean.TRUE.equals(post.getIsDeleted())) {
+            throw new IllegalArgumentException("Post not found");
+        }
+
+        boolean isOwner = viewerUsername != null
+                && post.getUser() != null
+                && viewerUsername.equals(post.getUser().getUsername());
+
+        if (Boolean.TRUE.equals(post.getIsPending()) && !isOwner) {
+            throw new IllegalArgumentException("Post not found");
+        }
+
+        return buildPostResponse(post, viewerUsername);
     }
 
     @Override
@@ -420,7 +465,8 @@ public class PostServiceImpl implements PostService {
                 tagNames,
                 commentCount,
                 likeCount,
-                likedByMe
+                likedByMe,
+                Boolean.TRUE.equals(post.getIsPending())
         );
     }
 

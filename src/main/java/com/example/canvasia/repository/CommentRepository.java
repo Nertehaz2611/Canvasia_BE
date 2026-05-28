@@ -38,6 +38,7 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     @Query("""
         select c from Comment c
         where c.post.isDeleted = false
+          and c.post.isPending = false
         order by c.createdAt desc
         """)
     List<Comment> findLatestComments(Pageable pageable);

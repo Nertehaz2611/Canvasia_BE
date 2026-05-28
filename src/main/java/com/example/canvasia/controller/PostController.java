@@ -103,6 +103,14 @@ public class PostController {
         return postService.unlikePost(authentication.getName(), postId);
     }
 
+    @GetMapping("/{postId}")
+    public PostResponse getPostById(
+            Authentication authentication,
+            @PathVariable UUID postId
+    ) {
+        return postService.getPostById(extractViewerUsername(authentication), postId);
+    }
+
     @GetMapping("/users/{username}")
     public PostFeedResponse getPostsByUser(
             Authentication authentication,
@@ -121,6 +129,16 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return postService.getArchivedPostsByOwner(authentication.getName(), page, size);
+    }
+
+    @GetMapping("/pending")
+    @SecurityRequirement(name = "bearerAuth")
+    public PostFeedResponse getPendingPostsByOwner(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return postService.getPendingPostsByOwner(authentication.getName(), page, size);
     }
 
     @GetMapping("/tags/{tag}")
