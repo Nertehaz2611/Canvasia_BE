@@ -1,9 +1,11 @@
 package com.example.canvasia.dto.follow;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record FollowStatusResponse(
         String username,
         long followerCount,
         long followingCount,
-        boolean isFollowing
+        @JsonProperty("isFollowing") boolean isFollowing
 ) {
 }

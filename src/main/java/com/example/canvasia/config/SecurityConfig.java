@@ -34,7 +34,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
                 .cors(Customizer.withDefaults())
@@ -68,8 +68,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/private/**",
                                 "/api/profile/**",
-                                "/api/follows/**"
+                                "/api/follows/**",
+                                "/api/messages/**"
                         ).authenticated()
+                        // WebSocket handshake endpoint — Spring Security must allow it
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().permitAll()
                 )
 

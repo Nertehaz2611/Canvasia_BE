@@ -16,6 +16,7 @@ public interface ProfileRepository extends JpaRepository<Profile, UUID> {
 
     @Query("""
         select p from Profile p
+        join fetch p.user
         where p.user.id in :userIds
         """)
     List<Profile> findByUserIdIn(@Param("userIds") Collection<UUID> userIds);
