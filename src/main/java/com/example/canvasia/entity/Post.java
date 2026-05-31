@@ -1,6 +1,7 @@
 package com.example.canvasia.entity;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import com.example.canvasia.entity.base.AuditableEntity;
 
@@ -50,6 +51,12 @@ public class Post extends AuditableEntity {
     @Column
     private LocalDateTime deletedAt;
 
+    @Column(name = "flagged_matched_post_id")
+    private UUID flaggedMatchedPostId;
+
+    @Column(name = "flagged_matched_author_display_name", length = 100)
+    private String flaggedMatchedAuthorDisplayName;
+
     public static Post create(User user, String caption) {
         validate(user);
 
@@ -65,6 +72,11 @@ public class Post extends AuditableEntity {
 
     public void markPending(boolean pending) {
         this.isPending = pending;
+    }
+
+    public void flagWith(UUID matchedPostId, String authorDisplayName) {
+        this.flaggedMatchedPostId = matchedPostId;
+        this.flaggedMatchedAuthorDisplayName = authorDisplayName;
     }
 
     public void moveToTrash() {

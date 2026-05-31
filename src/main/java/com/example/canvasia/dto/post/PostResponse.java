@@ -17,6 +17,8 @@ public record PostResponse(
         long commentCount,
         long likeCount,
         boolean likedByMe,
-        boolean isPending
+        boolean isPending,
+        UUID flaggedMatchedPostId,
+        String flaggedMatchedAuthorDisplayName
 ) {
 }

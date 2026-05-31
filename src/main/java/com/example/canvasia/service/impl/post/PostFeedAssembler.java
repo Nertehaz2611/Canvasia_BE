@@ -104,7 +104,9 @@ public class PostFeedAssembler {
                         commentCountByPostId.getOrDefault(post.getId(), 0L),
                         likeCountByPostId.getOrDefault(post.getId(), 0L),
                         likedPostIds.contains(post.getId()),
-                        Boolean.TRUE.equals(post.getIsPending())
+                        Boolean.TRUE.equals(post.getIsPending()),
+                        post.getFlaggedMatchedPostId(),
+                        post.getFlaggedMatchedAuthorDisplayName()
                 ))
                 .toList();
     }

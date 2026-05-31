@@ -200,9 +200,6 @@ public class PostServiceImpl implements PostService {
     public void hardDeletePost(String username, UUID postId) {
         Post post = getOwnedTrashedPost(username, postId);
         List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
-        for (Media item : media) {
-            moderationQueuePublisher.publishDelete(item.getId().toString());
-        }
         hardDeletePostInternal(post, media);
     }
 
@@ -211,9 +208,6 @@ public class PostServiceImpl implements PostService {
         List<Post> postsToPurge = postRepository.findByIsDeletedTrueAndDeletedAtBefore(deletedBefore);
         for (Post post : postsToPurge) {
             List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
-            for (Media item : media) {
-                moderationQueuePublisher.publishDelete(item.getId().toString());
-            }
             hardDeletePostInternal(post, media);
         }
         return postsToPurge.size();
@@ -466,7 +460,9 @@ public class PostServiceImpl implements PostService {
                 commentCount,
                 likeCount,
                 likedByMe,
-                Boolean.TRUE.equals(post.getIsPending())
+                Boolean.TRUE.equals(post.getIsPending()),
+                post.getFlaggedMatchedPostId(),
+                post.getFlaggedMatchedAuthorDisplayName()
         );
     }
 

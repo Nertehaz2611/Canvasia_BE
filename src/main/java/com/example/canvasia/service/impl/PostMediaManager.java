@@ -28,6 +28,7 @@ public class PostMediaManager {
     private final MediaRepository mediaRepository;
     private final MediaVariantRepository mediaVariantRepository;
     private final PostMediaStorageService postMediaStorageService;
+    private final ModerationQueuePublisher moderationQueuePublisher;
 
     public void createMedia(
             Post post,
@@ -68,6 +69,12 @@ public class PostMediaManager {
         }
 
         List<UUID> mediaIds = mediaToDelete.stream().map(Media::getId).toList();
+
+        // Notify AI server to soft-delete vectors before removing DB rows
+        for (UUID mediaId : mediaIds) {
+            moderationQueuePublisher.publishDelete(mediaId.toString());
+        }
+
         List<MediaVariant> variants = mediaVariantRepository.findByMediaIdIn(mediaIds);
         postMediaStorageService.deleteByPublicIds(variants.stream().map(MediaVariant::getPublicId).toList());
         mediaVariantRepository.deleteByMediaIdIn(mediaIds);
