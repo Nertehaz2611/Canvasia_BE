@@ -27,4 +27,7 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
     Page<Media> findByPostIdOrderByOrderIndexAsc(UUID postId, Pageable pageable);
 
     Page<Media> findByUserIdOrderByIdDesc(UUID userId, Pageable pageable);
+
+    @Query("SELECT m FROM Media m JOIN m.post p WHERE m.userId = :userId AND p.isDeleted = false ORDER BY m.id DESC")
+    Page<Media> findByUserIdAndPostNotDeletedOrderByIdDesc(@Param("userId") UUID userId, Pageable pageable);
 }

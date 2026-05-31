@@ -61,7 +61,7 @@ public class MediaServiceImpl implements MediaService {
         int safeSize = clampPageSize(size, MAX_MEDIA_PAGE_SIZE);
         PageRequest pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Order.desc("id")));
 
-        Page<Media> mediaPage = mediaRepository.findByUserIdOrderByIdDesc(user.getId(), pageable);
+        Page<Media> mediaPage = mediaRepository.findByUserIdAndPostNotDeletedOrderByIdDesc(user.getId(), pageable);
         List<MediaQueryItemResponse> items = mediaQueryAssembler.toMediaItems(mediaPage.getContent());
 
         return new MediaListResponse(items, safePage, safeSize, mediaPage.hasNext());
