@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.dto.post.CreatePostRequest;
+import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
@@ -26,6 +27,8 @@ public interface PostService {
     PostFeedResponse getPendingPostsByOwner(String username, int page, int size);
 
     PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size);
+
+    CursorPostFeedResponse searchPosts(String viewerUsername, String query, int limit, String cursor);
 
     PostResponse getPostById(String viewerUsername, UUID postId);
 

@@ -1,5 +1,7 @@
 package com.example.canvasia.service.interfaces;
 
+import java.util.List;
+
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.dto.profile.AccountSettingsRequest;
@@ -12,6 +14,8 @@ public interface ProfileService {
     ProfileResponse getCurrentProfile(String username);
 
     ProfileResponse getProfileByUsername(String viewerUsername, String username);
+
+    List<ProfileResponse> searchProfiles(String viewerUsername, String query, int limit);
 
     ProfileResponse setupProfile(String username, ProfileSetupRequest request);
 

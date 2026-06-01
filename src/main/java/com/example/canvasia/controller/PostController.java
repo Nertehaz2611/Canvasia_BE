@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.controller.support.PostRequestResolver;
 import com.example.canvasia.dto.post.CreatePostRequest;
+import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
@@ -149,6 +150,16 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return postService.getPostsByTag(extractViewerUsername(authentication), tag, page, size);
+    }
+
+    @GetMapping("/search")
+    public CursorPostFeedResponse searchPosts(
+            Authentication authentication,
+            @RequestParam String query,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String cursor
+    ) {
+        return postService.searchPosts(extractViewerUsername(authentication), query, limit, cursor);
     }
 
     private String extractViewerUsername(Authentication authentication) {

@@ -1,5 +1,7 @@
 package com.example.canvasia.service.impl;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,6 +43,22 @@ public class ProfileServiceImpl implements ProfileService {
         User user = getUserByUsername(username);
         Profile profile = findProfileOrBuild(user);
         return toProfileResponse(user, profile, viewerUsername, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProfileResponse> searchProfiles(String viewerUsername, String query, int limit) {
+        String safeQuery = query == null ? "" : query.trim();
+        if (safeQuery.isEmpty()) {
+            return List.of();
+        }
+
+        int safeLimit = Math.max(1, Math.min(limit, 8));
+        return userRepository.searchByDisplayNameOrUsername(safeQuery, org.springframework.data.domain.PageRequest.of(0, safeLimit)).stream()
+            .map(user -> profileRepository.findByUserId(user.getId())
+                .map(profile -> toProfileResponse(user, profile, viewerUsername, false))
+                .orElseGet(() -> toProfileResponse(user, findProfileOrBuild(user), viewerUsername, false)))
+                .toList();
     }
 
     @Override

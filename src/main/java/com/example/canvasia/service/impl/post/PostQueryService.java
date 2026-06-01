@@ -69,12 +69,30 @@ public class PostQueryService {
             }
         }
 
-        boolean hasNext = rows.size() > safeLimit;
-        List<Post> itemsSlice = hasNext ? rows.subList(0, safeLimit) : rows;
-        List<PostResponse> items = postFeedAssembler.toPostResponses(itemsSlice, viewerUsername);
-        String nextCursor = hasNext ? discoverCursorCodec.encodePostCursor(itemsSlice.get(itemsSlice.size() - 1)) : null;
+        return buildCursorFeed(rows, safeLimit, viewerUsername);
+    }
 
-        return new CursorPostFeedResponse(items, safeLimit, nextCursor, hasNext);
+    @Transactional(readOnly = true)
+    public CursorPostFeedResponse getSearchPostsByCursor(int limit, String cursor, String query, String viewerUsername) {
+        String safeQuery = query == null ? "" : query.trim();
+        if (safeQuery.isEmpty()) {
+            return buildCursorFeed(List.of(), clampPageSize(limit, MAX_POST_PAGE_SIZE), viewerUsername);
+        }
+
+        int safeLimit = clampPageSize(limit, MAX_POST_PAGE_SIZE);
+        DiscoverCursorCodec.DecodedPostCursor decodedCursor = discoverCursorCodec.decodePostCursor(cursor);
+        boolean hasCursor = decodedCursor.createdAt() != null && decodedCursor.id() != null;
+
+        List<Post> rows = hasCursor
+                ? postRepository.searchDiscoverSlice(
+                        safeQuery,
+                        decodedCursor.createdAt(),
+                        decodedCursor.id(),
+                        PageRequest.of(0, safeLimit + 1)
+                )
+                : postRepository.searchDiscoverFirstPage(safeQuery, PageRequest.of(0, safeLimit + 1));
+
+            return buildCursorFeed(rows, safeLimit, viewerUsername);
     }
 
     @Transactional(readOnly = true)
@@ -141,6 +159,15 @@ public class PostQueryService {
             return tagName.substring(1);
         }
         return tagName;
+    }
+
+    private CursorPostFeedResponse buildCursorFeed(List<Post> rows, int safeLimit, String viewerUsername) {
+        boolean hasNext = rows.size() > safeLimit;
+        List<Post> itemsSlice = hasNext ? rows.subList(0, safeLimit) : rows;
+        List<PostResponse> items = postFeedAssembler.toPostResponses(itemsSlice, viewerUsername);
+        String nextCursor = hasNext ? discoverCursorCodec.encodePostCursor(itemsSlice.get(itemsSlice.size() - 1)) : null;
+
+        return new CursorPostFeedResponse(items, safeLimit, nextCursor, hasNext);
     }
 
 }

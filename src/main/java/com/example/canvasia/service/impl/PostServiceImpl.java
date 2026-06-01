@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.dto.post.CreatePostRequest;
+import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.MediaItemResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
@@ -246,6 +247,12 @@ public class PostServiceImpl implements PostService {
     @Transactional(readOnly = true)
     public PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size) {
         return postQueryService.getPostsByTag(viewerUsername, tag, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CursorPostFeedResponse searchPosts(String viewerUsername, String query, int limit, String cursor) {
+        return postQueryService.getSearchPostsByCursor(limit, cursor, query, viewerUsername);
     }
 
     @Override

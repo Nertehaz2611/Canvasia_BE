@@ -1,5 +1,7 @@
 package com.example.canvasia.controller;
 
+import java.util.List;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +44,15 @@ public class ProfileController {
             @PathVariable String username
     ) {
         return profileService.getProfileByUsername(authentication.getName(), username);
+    }
+
+    @GetMapping("/search")
+    public List<ProfileResponse> searchProfiles(
+            Authentication authentication,
+            @RequestParam String query,
+            @RequestParam(defaultValue = "8") int limit
+    ) {
+        return profileService.searchProfiles(authentication.getName(), query, limit);
     }
 
     @PutMapping("/setup")

@@ -142,4 +142,48 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
         @Param("cursorId") UUID cursorId,
         Pageable pageable
     );
+
+    @Query(
+            value = """
+                    select p.*
+                    from posts p
+                    where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
+                      and (
+                        lower(coalesce(p.caption, '')) like lower(concat('%', :query, '%'))
+                        or to_tsvector('simple', coalesce(p.caption, '')) @@ websearch_to_tsquery('simple', :query)
+                      )
+                    order by p.created_at desc, p.id desc
+                    """,
+            nativeQuery = true
+    )
+    List<Post> searchDiscoverFirstPage(
+            @Param("query") String query,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    select p.*
+                    from posts p
+                    where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
+                      and (
+                        lower(coalesce(p.caption, '')) like lower(concat('%', :query, '%'))
+                        or to_tsvector('simple', coalesce(p.caption, '')) @@ websearch_to_tsquery('simple', :query)
+                      )
+                      and (
+                        p.created_at < :cursorCreatedAt
+                        or (p.created_at = :cursorCreatedAt and p.id < :cursorId)
+                      )
+                    order by p.created_at desc, p.id desc
+                    """,
+            nativeQuery = true
+    )
+    List<Post> searchDiscoverSlice(
+            @Param("query") String query,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
 }
