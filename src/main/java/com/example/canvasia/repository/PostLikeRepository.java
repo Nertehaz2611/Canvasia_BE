@@ -21,6 +21,8 @@ public interface PostLikeRepository extends JpaRepository<PostLike, UUID> {
 
     long countByPostId(UUID postId);
 
+    void deleteByPostId(UUID postId);
+
     Optional<PostLike> findByUserUsernameAndPostId(String username, UUID postId);
 
     @Query("""

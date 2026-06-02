@@ -11,6 +11,8 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,6 +41,8 @@ import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
 import com.example.canvasia.service.impl.post.PostQueryService;
 import com.example.canvasia.service.impl.post.PostTagResolver;
+import com.example.canvasia.service.interfaces.NotificationService;
+import com.example.canvasia.service.interfaces.PostDeletionService;
 import com.example.canvasia.service.interfaces.PostMediaStorageService;
 import com.example.canvasia.service.interfaces.PostService;
 
@@ -47,6 +51,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class PostServiceImpl implements PostService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PostServiceImpl.class);
 
     private static final Pattern CAPTION_TAG_PATTERN = Pattern.compile("(^|\\s)([#@][a-z0-9._-]{1,50})", Pattern.CASE_INSENSITIVE);
 
@@ -60,6 +66,8 @@ public class PostServiceImpl implements PostService {
     private final PostQueryService postQueryService;
     private final ProfileRepository profileRepository;
     private final ModerationQueuePublisher moderationQueuePublisher;
+    private final NotificationService notificationService;
+    private final PostDeletionService postDeletionService;
 
     @Override
     @Transactional
@@ -200,29 +208,16 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public void hardDeletePost(String username, UUID postId) {
         Post post = getOwnedTrashedPost(username, postId);
-        List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
-        hardDeletePostInternal(post, media);
+        postDeletionService.hardDeletePost(post);
     }
 
     @Transactional
     public int hardDeleteExpiredSoftDeletedPosts(LocalDateTime deletedBefore) {
         List<Post> postsToPurge = postRepository.findByIsDeletedTrueAndDeletedAtBefore(deletedBefore);
         for (Post post : postsToPurge) {
-            List<Media> media = postMediaManager.findByPostIdOrdered(post.getId());
-            hardDeletePostInternal(post, media);
+            postDeletionService.hardDeletePost(post);
         }
         return postsToPurge.size();
-    }
-
-    private void hardDeletePostInternal(Post post, List<Media> media) {
-        postMediaManager.deleteMediaAndAssets(media);
-
-        List<PostTag> postTags = postTagRepository.findByPostId(post.getId());
-        if (!postTags.isEmpty()) {
-            postTagRepository.deleteAll(postTags);
-        }
-
-        postRepository.delete(post);
     }
 
     @Override
@@ -284,6 +279,7 @@ public class PostServiceImpl implements PostService {
 
         if (!postLikeRepository.existsByUserUsernameAndPostId(username, postId)) {
             postLikeRepository.save(PostLike.create(user, post));
+            safeNotify(() -> notificationService.notifyPostLike(post, user), "post like", postId);
         }
 
         long likeCount = postLikeRepository.countByPostId(postId);
@@ -475,6 +471,14 @@ public class PostServiceImpl implements PostService {
 
     private <T> List<T> safeList(List<T> values) {
         return values == null ? List.of() : values;
+    }
+
+    private void safeNotify(Runnable action, String actionLabel, UUID postId) {
+        try {
+            action.run();
+        } catch (RuntimeException ex) {
+            logger.warn("[Notification] Failed to send {} notification for post {}", actionLabel, postId, ex);
+        }
     }
 
     private String normalizeBlank(String value) {

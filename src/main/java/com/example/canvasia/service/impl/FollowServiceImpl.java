@@ -22,6 +22,7 @@ import com.example.canvasia.entity.User;
 import com.example.canvasia.repository.FollowRepository;
 import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
+import com.example.canvasia.service.interfaces.NotificationService;
 import com.example.canvasia.service.interfaces.FollowService;
 
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class FollowServiceImpl implements FollowService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final ProfileRepository profileRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -43,6 +45,7 @@ public class FollowServiceImpl implements FollowService {
         if (!followRepository.existsByFollowerUsernameAndFollowingUsername(followerUsername, followingUsername)) {
             Follow follow = Follow.create(follower, following);
             followRepository.save(follow);
+            notificationService.notifyFollow(following, follower);
         }
 
         return buildFollowStatus(followerUsername, following);

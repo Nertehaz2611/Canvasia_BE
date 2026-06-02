@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -30,6 +32,7 @@ import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
 import static com.example.canvasia.service.impl.support.PagingUtils.clampPageSize;
+import com.example.canvasia.service.interfaces.NotificationService;
 import com.example.canvasia.service.interfaces.CommentService;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CommentServiceImpl.class);
 
     private static final int MAX_COMMENT_PAGE_SIZE = 20;
     private static final int FIXED_UI_MAX_DEPTH = 2;
@@ -46,6 +51,7 @@ public class CommentServiceImpl implements CommentService {
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final ProfileRepository profileRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -55,6 +61,7 @@ public class CommentServiceImpl implements CommentService {
         String content = extractCommentContent(request);
 
         Comment saved = commentRepository.save(Comment.createRootComment(post, user, content));
+        safeNotify(() -> notificationService.notifyPostComment(post, user), "post comment", post.getId());
         return buildSingleCommentResponse(saved, username);
     }
 
@@ -89,6 +96,7 @@ public class CommentServiceImpl implements CommentService {
             : content;
 
         Comment saved = commentRepository.save(Comment.createReplyComment(effectiveParent, user, effectiveContent));
+        safeNotify(() -> notificationService.notifyRootCommentReply(effectiveParent, user), "comment reply", requestedParent.getId());
         return buildSingleCommentResponse(saved, username);
     }
 
@@ -99,8 +107,10 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = getCommentById(commentId);
         ensureCommentPostActive(comment);
 
-        if (!commentLikeRepository.existsByUserUsernameAndCommentId(username, commentId)) {
+        boolean hasLiked = commentLikeRepository.existsByUserUsernameAndCommentId(username, commentId);
+        if (!hasLiked) {
             commentLikeRepository.save(CommentLike.create(user, comment));
+            safeNotify(() -> notificationService.notifyCommentLike(comment, user), "comment like", commentId);
         }
 
         long likeCount = commentLikeRepository.countByCommentId(commentId);
@@ -431,6 +441,14 @@ public class CommentServiceImpl implements CommentService {
     private User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    private void safeNotify(Runnable action, String actionLabel, UUID referenceId) {
+        try {
+            action.run();
+        } catch (RuntimeException ex) {
+            logger.warn("[Notification] Failed to send {} notification for reference {}", actionLabel, referenceId, ex);
+        }
     }
 
     private Post getActivePost(UUID postId) {

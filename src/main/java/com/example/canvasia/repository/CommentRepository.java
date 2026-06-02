@@ -16,6 +16,12 @@ import com.example.canvasia.entity.Comment;
 
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
+    interface CommentPostRefView {
+        UUID getCommentId();
+
+        UUID getPostId();
+    }
+
     interface PostCommentCountView {
         UUID getPostId();
 
@@ -46,6 +52,21 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     Optional<Comment> findByIdAndPostId(UUID id, UUID postId);
 
     @Query("""
+        select distinct c.user.id
+        from Comment c
+        where c.id = :rootId
+           or c.rootId = :rootId
+        """)
+    List<UUID> findParticipantUserIdsByRootId(@Param("rootId") UUID rootId);
+
+    @Query("""
+        select c.id
+        from Comment c
+        where c.post.id = :postId
+        """)
+    List<UUID> findIdsByPostId(@Param("postId") UUID postId);
+
+    @Query("""
         select c from Comment c
         where c.post.id = :postId
           and c.rootId in :rootIds
@@ -71,12 +92,26 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
         """)
     List<UUID> findIdsByRootId(@Param("rootId") UUID rootId);
 
+    @Query("""
+        select c.id as commentId, c.post.id as postId
+        from Comment c
+        where c.id in :commentIds
+        """)
+    List<CommentPostRefView> findPostIdsByCommentIds(@Param("commentIds") Collection<UUID> commentIds);
+
     @Modifying
     @Query("""
         delete from Comment c
         where c.rootId = :rootId
         """)
     int deleteByRootId(@Param("rootId") UUID rootId);
+
+    @Modifying
+    @Query("""
+        delete from Comment c
+        where c.post.id = :postId
+        """)
+    int deleteByPostId(@Param("postId") UUID postId);
 
     @Query("""
         select c.post.id as postId, count(c.id) as commentCount
