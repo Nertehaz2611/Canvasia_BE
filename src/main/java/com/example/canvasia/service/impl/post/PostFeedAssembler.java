@@ -24,6 +24,7 @@ import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.MediaRepository;
 import com.example.canvasia.repository.MediaVariantRepository;
 import com.example.canvasia.repository.PostLikeRepository;
+import com.example.canvasia.repository.PostSaveRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.repository.ProfileRepository;
 
@@ -37,6 +38,7 @@ public class PostFeedAssembler {
     private final MediaVariantRepository mediaVariantRepository;
     private final PostTagRepository postTagRepository;
         private final PostLikeRepository postLikeRepository;
+        private final PostSaveRepository postSaveRepository;
         private final CommentRepository commentRepository;
         private final ProfileRepository profileRepository;
 
@@ -80,8 +82,10 @@ public class PostFeedAssembler {
         }
 
         Set<UUID> likedPostIds = new HashSet<>();
+        Set<UUID> savedPostIds = new HashSet<>();
         if (viewerUsername != null && !viewerUsername.isBlank()) {
             likedPostIds.addAll(postLikeRepository.findLikedPostIdsByUsernameAndPostIds(viewerUsername, postIds));
+            savedPostIds.addAll(postSaveRepository.findSavedPostIdsByUsernameAndPostIds(viewerUsername, postIds));
         }
 
         Map<UUID, String> avatarUrlByUserId = loadAvatarUrls(posts.stream().map(post -> post.getUser().getId()).toList());
@@ -104,6 +108,7 @@ public class PostFeedAssembler {
                         commentCountByPostId.getOrDefault(post.getId(), 0L),
                         likeCountByPostId.getOrDefault(post.getId(), 0L),
                         likedPostIds.contains(post.getId()),
+                        savedPostIds.contains(post.getId()),
                         Boolean.TRUE.equals(post.getIsPending()),
                         post.getFlaggedMatchedPostId(),
                         post.getFlaggedMatchedAuthorDisplayName()

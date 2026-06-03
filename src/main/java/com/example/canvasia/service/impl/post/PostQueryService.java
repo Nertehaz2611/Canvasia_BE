@@ -13,6 +13,7 @@ import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.entity.Post;
 import com.example.canvasia.repository.PostRepository;
+import com.example.canvasia.repository.PostSaveRepository;
 import com.example.canvasia.service.impl.support.DiscoverCursorCodec;
 import static com.example.canvasia.service.impl.support.PagingUtils.clampPageSize;
 
@@ -25,6 +26,7 @@ public class PostQueryService {
     private static final int MAX_POST_PAGE_SIZE = 10;
 
     private final PostRepository postRepository;
+    private final PostSaveRepository postSaveRepository;
     private final PostTagResolver postTagResolver;
     private final PostFeedAssembler postFeedAssembler;
     private final DiscoverCursorCodec discoverCursorCodec;
@@ -141,6 +143,16 @@ public class PostQueryService {
         );
 
         return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), viewerUsername), safePage, safeSize, posts.hasNext());
+    }
+
+    @Transactional(readOnly = true)
+    public PostFeedResponse getSavedPosts(String username, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
+        PageRequest pageable = PageRequest.of(safePage, safeSize);
+
+        Page<Post> posts = postSaveRepository.findSavedPostsByUsername(username, pageable);
+        return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), username), safePage, safeSize, posts.hasNext());
     }
 
     private PageRequest buildPostPageRequest(int safePage, int safeSize) {

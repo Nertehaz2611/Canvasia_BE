@@ -23,12 +23,14 @@ import com.example.canvasia.dto.post.MediaItemResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
+import com.example.canvasia.dto.post.PostSaveResponse;
 import com.example.canvasia.dto.post.ReplaceMediaRequest;
 import com.example.canvasia.dto.post.ThumbnailCropRequest;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.Post;
 import com.example.canvasia.entity.PostLike;
+import com.example.canvasia.entity.PostSave;
 import com.example.canvasia.entity.PostTag;
 import com.example.canvasia.entity.Profile;
 import com.example.canvasia.entity.Tag;
@@ -36,6 +38,7 @@ import com.example.canvasia.entity.User;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostRepository;
+import com.example.canvasia.repository.PostSaveRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
@@ -61,6 +64,7 @@ public class PostServiceImpl implements PostService {
     private final PostMediaManager postMediaManager;
     private final PostTagRepository postTagRepository;
     private final PostLikeRepository postLikeRepository;
+    private final PostSaveRepository postSaveRepository;
     private final CommentRepository commentRepository;
     private final PostTagResolver postTagResolver;
     private final PostQueryService postQueryService;
@@ -298,6 +302,36 @@ public class PostServiceImpl implements PostService {
         return new PostLikeResponse(post.getId(), likeCount, false);
     }
 
+    @Override
+    @Transactional
+    public PostSaveResponse savePost(String username, UUID postId) {
+        User user = getUserByUsername(username);
+        Post post = getActivePost(postId);
+
+        if (!postSaveRepository.existsByUserUsernameAndPostId(username, postId)) {
+            postSaveRepository.save(PostSave.create(user, post));
+        }
+
+        return new PostSaveResponse(postId, true);
+    }
+
+    @Override
+    @Transactional
+    public PostSaveResponse unsavePost(String username, UUID postId) {
+        Post post = getActivePost(postId);
+
+        postSaveRepository.findByUserUsernameAndPostId(username, postId)
+                .ifPresent(postSaveRepository::delete);
+
+        return new PostSaveResponse(post.getId(), false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PostFeedResponse getSavedPosts(String username, int page, int size) {
+        return postQueryService.getSavedPosts(username, page, size);
+    }
+
     private List<MultipartFile> normalizeFiles(List<MultipartFile> files) {
         if (files == null) {
             return List.of();
@@ -441,6 +475,7 @@ public class PostServiceImpl implements PostService {
 
         long likeCount = postLikeRepository.countByPostId(post.getId());
         boolean likedByMe = viewerUsername != null && postLikeRepository.existsByUserUsernameAndPostId(viewerUsername, post.getId());
+        boolean savedByMe = viewerUsername != null && postSaveRepository.existsByUserUsernameAndPostId(viewerUsername, post.getId());
         long commentCount = commentRepository.countByPostId(post.getId());
 
         User user = post.getUser();
@@ -463,6 +498,7 @@ public class PostServiceImpl implements PostService {
                 commentCount,
                 likeCount,
                 likedByMe,
+                savedByMe,
                 Boolean.TRUE.equals(post.getIsPending()),
                 post.getFlaggedMatchedPostId(),
                 post.getFlaggedMatchedAuthorDisplayName()

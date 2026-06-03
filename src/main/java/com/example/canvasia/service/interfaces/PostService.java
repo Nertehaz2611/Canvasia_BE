@@ -9,6 +9,7 @@ import com.example.canvasia.dto.post.CreatePostRequest;
 import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
+import com.example.canvasia.dto.post.PostSaveResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 
@@ -37,4 +38,10 @@ public interface PostService {
     PostLikeResponse likePost(String username, UUID postId);
 
     PostLikeResponse unlikePost(String username, UUID postId);
+
+    PostSaveResponse savePost(String username, UUID postId);
+
+    PostSaveResponse unsavePost(String username, UUID postId);
+
+    PostFeedResponse getSavedPosts(String username, int page, int size);
 }

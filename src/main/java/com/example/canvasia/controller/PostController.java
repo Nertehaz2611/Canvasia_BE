@@ -24,6 +24,7 @@ import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
+import com.example.canvasia.dto.post.PostSaveResponse;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 import com.example.canvasia.service.interfaces.PostService;
 
@@ -102,6 +103,34 @@ public class PostController {
             @PathVariable UUID postId
     ) {
         return postService.unlikePost(authentication.getName(), postId);
+    }
+
+    @PostMapping("/{postId}/saves")
+    @SecurityRequirement(name = "bearerAuth")
+    public PostSaveResponse savePost(
+            Authentication authentication,
+            @PathVariable UUID postId
+    ) {
+        return postService.savePost(authentication.getName(), postId);
+    }
+
+    @DeleteMapping("/{postId}/saves")
+    @SecurityRequirement(name = "bearerAuth")
+    public PostSaveResponse unsavePost(
+            Authentication authentication,
+            @PathVariable UUID postId
+    ) {
+        return postService.unsavePost(authentication.getName(), postId);
+    }
+
+    @GetMapping("/saved")
+    @SecurityRequirement(name = "bearerAuth")
+    public PostFeedResponse getSavedPosts(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return postService.getSavedPosts(authentication.getName(), page, size);
     }
 
     @GetMapping("/{postId}")
