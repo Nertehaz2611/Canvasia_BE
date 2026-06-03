@@ -52,6 +52,13 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     Optional<Comment> findByIdAndPostId(UUID id, UUID postId);
 
     @Query("""
+        select count(c) from Comment c
+        where c.post.isDeleted = false
+          and c.post.isPending = false
+        """)
+    long countActiveComments();
+
+    @Query("""
         select distinct c.user.id
         from Comment c
         where c.id = :rootId

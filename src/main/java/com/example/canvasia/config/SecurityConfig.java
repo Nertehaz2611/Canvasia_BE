@@ -66,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, API_COMMENTS_PATTERN).authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers("/api/moderation/admin/**").authenticated()
+                        .requestMatchers("/api/admin/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/posts/search").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/posts/pending").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/posts/saved").authenticated()

@@ -8,6 +8,8 @@ public enum NotificationType {
     COMMENT_THREAD_REPLY,
     POST_PENDING,
     POST_APPROVED,
+    POST_REJECTED,
     POST_DELETED,
+    POST_DELETED_REPORTED,
     FOLLOW
 }

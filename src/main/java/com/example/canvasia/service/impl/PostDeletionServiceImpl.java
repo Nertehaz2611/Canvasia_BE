@@ -13,6 +13,8 @@ import com.example.canvasia.repository.CommentLikeRepository;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
 import com.example.canvasia.repository.PostRepository;
+import com.example.canvasia.repository.PostReportRepository;
+import com.example.canvasia.repository.PostSaveRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.service.interfaces.PostDeletionService;
 
@@ -25,6 +27,8 @@ public class PostDeletionServiceImpl implements PostDeletionService {
     private final PostRepository postRepository;
     private final PostTagRepository postTagRepository;
     private final PostLikeRepository postLikeRepository;
+    private final PostSaveRepository postSaveRepository;
+    private final PostReportRepository postReportRepository;
     private final CommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final PostMediaManager postMediaManager;
@@ -47,6 +51,8 @@ public class PostDeletionServiceImpl implements PostDeletionService {
         }
 
         postLikeRepository.deleteByPostId(postId);
+        postSaveRepository.deleteByPostId(postId);
+        postReportRepository.deleteByPostId(postId);
 
         List<PostTag> postTags = postTagRepository.findByPostId(postId);
         if (!postTags.isEmpty()) {

@@ -268,7 +268,12 @@ public class PostServiceImpl implements PostService {
                 && post.getUser() != null
                 && viewerUsername.equals(post.getUser().getUsername());
 
-        if (Boolean.TRUE.equals(post.getIsPending()) && !isOwner) {
+        boolean isAdmin = !isOwner && viewerUsername != null
+                && userRepository.findByUsername(viewerUsername)
+                        .map(u -> u.getRole() != null && u.getRole().name().equals("ADMIN"))
+                        .orElse(false);
+
+        if (Boolean.TRUE.equals(post.getIsPending()) && !isOwner && !isAdmin) {
             throw new IllegalArgumentException("Post not found");
         }
 
@@ -500,6 +505,7 @@ public class PostServiceImpl implements PostService {
                 likedByMe,
                 savedByMe,
                 Boolean.TRUE.equals(post.getIsPending()),
+                Boolean.TRUE.equals(post.getIsRejected()),
                 post.getFlaggedMatchedPostId(),
                 post.getFlaggedMatchedAuthorDisplayName()
         );

@@ -160,7 +160,8 @@ public class ProfileServiceImpl implements ProfileService {
                 profile.getWebsite(),
                 followerCount,
                 followingCount,
-                isFollowing
+                isFollowing,
+                user.getRole() != null ? user.getRole().name() : null
         );
     }
 

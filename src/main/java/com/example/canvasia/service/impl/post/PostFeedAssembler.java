@@ -110,6 +110,7 @@ public class PostFeedAssembler {
                         likedPostIds.contains(post.getId()),
                         savedPostIds.contains(post.getId()),
                         Boolean.TRUE.equals(post.getIsPending()),
+                        Boolean.TRUE.equals(post.getIsRejected()),
                         post.getFlaggedMatchedPostId(),
                         post.getFlaggedMatchedAuthorDisplayName()
                 ))

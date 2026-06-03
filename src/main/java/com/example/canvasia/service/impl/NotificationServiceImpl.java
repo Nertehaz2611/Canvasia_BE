@@ -238,6 +238,26 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void notifyPostRejected(Post post, User actor) {
+        if (post == null || post.getUser() == null) {
+            return;
+        }
+
+        createAndPublish(
+                post.getUser(),
+                actor,
+                NotificationType.POST_REJECTED,
+                ReferenceType.POST,
+                post.getId(),
+                post.getId(),
+                actor != null
+                    ? actor.getDisplayName() + " rejected your post"
+                    : "Your post was rejected by admin"
+        );
+    }
+
+    @Override
+    @Transactional
     public void notifyPostDeleted(Post post, User actor) {
         if (post == null || post.getUser() == null) {
             return;
@@ -253,6 +273,26 @@ public class NotificationServiceImpl implements NotificationService {
                 actor != null
                     ? actor.getDisplayName() + " deleted your post"
                     : "Your post was deleted"
+        );
+    }
+
+    @Override
+    @Transactional
+    public void notifyPostDeletedByReport(Post post, User actor, long reportCount) {
+        if (post == null || post.getUser() == null) {
+            return;
+        }
+
+        String content = "Your post was removed after receiving " + reportCount + " report" + (reportCount != 1 ? "s" : "");
+
+        createAndPublish(
+                post.getUser(),
+                actor,
+                NotificationType.POST_DELETED_REPORTED,
+                ReferenceType.POST,
+                post.getId(),
+                post.getId(),
+                content
         );
     }
 

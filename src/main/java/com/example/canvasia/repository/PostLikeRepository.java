@@ -1,13 +1,14 @@
 package com.example.canvasia.repository;
 
-import com.example.canvasia.entity.PostLike;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.example.canvasia.entity.PostLike;
 
 public interface PostLikeRepository extends JpaRepository<PostLike, UUID> {
 
@@ -24,6 +25,13 @@ public interface PostLikeRepository extends JpaRepository<PostLike, UUID> {
     void deleteByPostId(UUID postId);
 
     Optional<PostLike> findByUserUsernameAndPostId(String username, UUID postId);
+
+    @Query("""
+        select count(pl) from PostLike pl
+        where pl.post.isDeleted = false
+          and pl.post.isPending = false
+        """)
+    long countActiveLikes();
 
     @Query("""
         select pl.post.id as postId, count(pl.id) as likeCount

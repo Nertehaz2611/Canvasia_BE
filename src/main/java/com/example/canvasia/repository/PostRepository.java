@@ -16,9 +16,15 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     Page<Post> findByIsDeletedFalse(Pageable pageable);
 
+    long countByIsDeletedFalse();
+
+    long countByIsDeletedFalseAndIsPendingFalse();
+
     Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingFalse(String username, Pageable pageable);
 
     Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingTrue(String username, Pageable pageable);
+
+    Page<Post> findByIsDeletedFalseAndIsPendingTrueAndIsRejectedFalse(Pageable pageable);
 
     Page<Post> findByUserUsernameAndIsDeletedTrue(String username, Pageable pageable);
 

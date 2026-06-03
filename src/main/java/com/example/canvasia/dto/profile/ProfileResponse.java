@@ -23,4 +23,5 @@ public class ProfileResponse {
     private long followingCount;
     @JsonProperty("isFollowing")
     private boolean isFollowing;
+    private String role;
 }

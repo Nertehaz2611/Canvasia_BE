@@ -1,5 +1,7 @@
 package com.example.canvasia.entity;
 
+import java.util.UUID;
+
 import com.example.canvasia.entity.base.AuditableEntity;
 import com.example.canvasia.enums.NotificationType;
 import com.example.canvasia.enums.ReferenceType;
@@ -22,8 +24,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-
-import java.util.UUID;
 
 @Entity
 @Table(
@@ -144,7 +144,7 @@ public class Notification extends AuditableEntity {
                     );
                 }
             }
-            case POST_PENDING, POST_APPROVED, POST_DELETED -> {
+            case POST_PENDING, POST_APPROVED, POST_REJECTED, POST_DELETED, POST_DELETED_REPORTED -> {
                 if (referenceType != ReferenceType.POST) {
                     throw new DomainValidationException(
                             "NOTIFICATION_REFERENCE_TYPE_INVALID",
@@ -167,7 +167,7 @@ public class Notification extends AuditableEntity {
         }
 
         boolean actorRequired = switch (type) {
-            case POST_PENDING, POST_APPROVED, POST_DELETED -> false;
+            case POST_PENDING, POST_APPROVED, POST_REJECTED, POST_DELETED, POST_DELETED_REPORTED -> false;
             default -> true;
         };
 

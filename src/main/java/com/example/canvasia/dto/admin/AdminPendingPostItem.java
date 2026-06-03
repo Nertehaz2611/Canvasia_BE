@@ -1,10 +1,12 @@
-package com.example.canvasia.dto.post;
+package com.example.canvasia.dto.admin;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-public record PostResponse(
+import com.example.canvasia.dto.post.MediaItemResponse;
+
+public record AdminPendingPostItem(
         UUID postId,
         UUID userId,
         String displayName,
@@ -16,10 +18,6 @@ public record PostResponse(
         List<String> tags,
         long commentCount,
         long likeCount,
-        boolean likedByMe,
-        boolean savedByMe,
-        boolean isPending,
-        boolean isRejected,
         UUID flaggedMatchedPostId,
         String flaggedMatchedAuthorDisplayName
 ) {

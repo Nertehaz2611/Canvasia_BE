@@ -48,6 +48,10 @@ public class Post extends AuditableEntity {
     @Builder.Default
     private Boolean isPending = false;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean isRejected = false;
+
     @Column
     private LocalDateTime deletedAt;
 
@@ -72,6 +76,10 @@ public class Post extends AuditableEntity {
 
     public void markPending(boolean pending) {
         this.isPending = pending;
+    }
+
+    public void markRejected(boolean rejected) {
+        this.isRejected = rejected;
     }
 
     public void flagWith(UUID matchedPostId, String authorDisplayName) {

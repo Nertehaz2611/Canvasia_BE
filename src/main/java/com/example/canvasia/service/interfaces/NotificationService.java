@@ -29,5 +29,9 @@ public interface NotificationService {
 
     void notifyPostApproved(Post post, User actor);
 
+    void notifyPostRejected(Post post, User actor);
+
     void notifyPostDeleted(Post post, User actor);
+
+    void notifyPostDeletedByReport(Post post, User actor, long reportCount);
 }
