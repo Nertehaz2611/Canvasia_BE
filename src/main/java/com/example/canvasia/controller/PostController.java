@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.canvasia.controller.support.PostRequestResolver;
+import com.example.canvasia.dto.post.CreatePostReportRequest;
 import com.example.canvasia.dto.post.CreatePostRequest;
 import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
@@ -26,6 +28,7 @@ import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.PostSaveResponse;
 import com.example.canvasia.dto.post.UpdatePostRequest;
+import com.example.canvasia.service.interfaces.PostReportService;
 import com.example.canvasia.service.interfaces.PostService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -38,6 +41,7 @@ import lombok.RequiredArgsConstructor;
 public class PostController {
 
     private final PostService postService;
+    private final PostReportService postReportService;
     private final PostRequestResolver postRequestResolver;
 
     @PostMapping(consumes = {"multipart/form-data"})
@@ -189,6 +193,17 @@ public class PostController {
             @RequestParam(required = false) String cursor
     ) {
         return postService.searchPosts(extractViewerUsername(authentication), query, limit, cursor);
+    }
+
+    @PostMapping("/{postId}/reports")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> reportPost(
+            Authentication authentication,
+            @PathVariable UUID postId,
+            @RequestBody CreatePostReportRequest request
+    ) {
+        postReportService.reportPost(authentication.getName(), postId, request);
+        return ResponseEntity.ok().build();
     }
 
     private String extractViewerUsername(Authentication authentication) {
