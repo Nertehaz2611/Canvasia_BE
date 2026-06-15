@@ -1,6 +1,7 @@
 package com.example.canvasia.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.canvasia.dto.post.CreatePostRequest;
 import com.example.canvasia.dto.post.CursorPostFeedResponse;
 import com.example.canvasia.dto.post.MediaItemResponse;
+import com.example.canvasia.dto.post.PostAllowedViewerResponse;
 import com.example.canvasia.dto.post.PostFeedResponse;
 import com.example.canvasia.dto.post.PostLikeResponse;
 import com.example.canvasia.dto.post.PostResponse;
@@ -29,6 +31,7 @@ import com.example.canvasia.dto.post.ThumbnailCropRequest;
 import com.example.canvasia.dto.post.UpdatePostRequest;
 import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.Post;
+import com.example.canvasia.entity.PostAllowedViewer;
 import com.example.canvasia.entity.PostLike;
 import com.example.canvasia.entity.PostSave;
 import com.example.canvasia.entity.PostTag;
@@ -36,12 +39,15 @@ import com.example.canvasia.entity.Profile;
 import com.example.canvasia.entity.Tag;
 import com.example.canvasia.entity.User;
 import com.example.canvasia.repository.CommentRepository;
+import com.example.canvasia.repository.FollowRepository;
 import com.example.canvasia.repository.PostLikeRepository;
+import com.example.canvasia.repository.PostAllowedViewerRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.PostSaveRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.repository.ProfileRepository;
 import com.example.canvasia.repository.UserRepository;
+import com.example.canvasia.enums.PostVisibility;
 import com.example.canvasia.service.impl.post.PostQueryService;
 import com.example.canvasia.service.impl.post.PostTagResolver;
 import com.example.canvasia.service.interfaces.NotificationService;
@@ -62,10 +68,12 @@ public class PostServiceImpl implements PostService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final PostMediaManager postMediaManager;
+    private final PostAllowedViewerRepository postAllowedViewerRepository;
     private final PostTagRepository postTagRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostSaveRepository postSaveRepository;
     private final CommentRepository commentRepository;
+    private final FollowRepository followRepository;
     private final PostTagResolver postTagResolver;
     private final PostQueryService postQueryService;
     private final ProfileRepository profileRepository;
@@ -83,7 +91,7 @@ public class PostServiceImpl implements PostService {
         }
 
         CreatePostRequest safeRequest = request == null
-            ? new CreatePostRequest(null, List.of(), List.of())
+            ? new CreatePostRequest(null, List.of(), List.of(), PostVisibility.PUBLIC, List.of())
                 : request;
         Map<Integer, PostMediaStorageService.CropArea> cropAreasByIndex = resolveCropAreasByIndex(
             safeRequest.thumbnailCrops(),
@@ -91,6 +99,7 @@ public class PostServiceImpl implements PostService {
         );
 
         Post post = postRepository.save(Post.create(user, normalizeBlank(safeRequest.caption())));
+        applyPostAudience(post, user, safeRequest.visibility(), safeRequest.allowedViewerUserIds());
 
         for (int index = 0; index < safeFiles.size(); index++) {
             MultipartFile file = safeFiles.get(index);
@@ -118,7 +127,7 @@ public class PostServiceImpl implements PostService {
         Post post = getOwnedActivePost(username, postId);
         List<MultipartFile> safeFiles = normalizeFiles(files);
         UpdatePostRequest safeRequest = request == null
-                ? new UpdatePostRequest(null, null, List.of(), List.of(), List.of())
+            ? new UpdatePostRequest(null, null, List.of(), List.of(), List.of(), null, List.of())
                 : request;
 
         Map<Integer, PostMediaStorageService.CropArea> cropAreasByFileIndex = resolveCropAreasByIndex(
@@ -156,6 +165,9 @@ public class PostServiceImpl implements PostService {
         }
         if (safeRequest.tags() != null) {
             replacePostTags(post, mergeTagsFromRequestAndCaption(safeRequest.tags(), safeRequest.caption()));
+        }
+        if (safeRequest.visibility() != null || safeRequest.allowedViewerUserIds() != null) {
+            applyPostAudience(post, post.getUser(), safeRequest.visibility(), safeRequest.allowedViewerUserIds());
         }
 
         List<Media> mediaToDelete = existingMedia.stream()
@@ -277,6 +289,10 @@ public class PostServiceImpl implements PostService {
             throw new IllegalArgumentException("Post not found");
         }
 
+        if (!isOwner && !isAdmin && !canViewerAccessPost(post, viewerUsername)) {
+            throw new IllegalArgumentException("Post not found");
+        }
+
         return buildPostResponse(post, viewerUsername);
     }
 
@@ -284,7 +300,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostLikeResponse likePost(String username, UUID postId) {
         User user = getUserByUsername(username);
-        Post post = getActivePost(postId);
+        Post post = getActivePostForViewer(username, postId);
 
         if (!postLikeRepository.existsByUserUsernameAndPostId(username, postId)) {
             postLikeRepository.save(PostLike.create(user, post));
@@ -298,7 +314,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostLikeResponse unlikePost(String username, UUID postId) {
-        Post post = getActivePost(postId);
+        Post post = getActivePostForViewer(username, postId);
 
         postLikeRepository.findByUserUsernameAndPostId(username, postId)
                 .ifPresent(postLikeRepository::delete);
@@ -311,7 +327,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostSaveResponse savePost(String username, UUID postId) {
         User user = getUserByUsername(username);
-        Post post = getActivePost(postId);
+        Post post = getActivePostForViewer(username, postId);
 
         if (!postSaveRepository.existsByUserUsernameAndPostId(username, postId)) {
             postSaveRepository.save(PostSave.create(user, post));
@@ -323,7 +339,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostSaveResponse unsavePost(String username, UUID postId) {
-        Post post = getActivePost(postId);
+        Post post = getActivePostForViewer(username, postId);
 
         postSaveRepository.findByUserUsernameAndPostId(username, postId)
                 .ifPresent(postSaveRepository::delete);
@@ -367,6 +383,14 @@ public class PostServiceImpl implements PostService {
 
         if (Boolean.TRUE.equals(post.getIsDeleted())) {
             throw new IllegalArgumentException("Post has already been deleted");
+        }
+        return post;
+    }
+
+    private Post getActivePostForViewer(String viewerUsername, UUID postId) {
+        Post post = getActivePost(postId);
+        if (!canViewerAccessPost(post, viewerUsername)) {
+            throw new IllegalArgumentException("Post not found");
         }
         return post;
     }
@@ -490,6 +514,7 @@ public class PostServiceImpl implements PostService {
         String displayName = user.getDisplayName();
         String username = user.getUsername();
         String caption = post.getCaption();
+        List<PostAllowedViewerResponse> allowedViewers = resolveAllowedViewers(post, viewerUsername);
         return new PostResponse(
                 post.getId(),
                 user.getId(),
@@ -507,8 +532,94 @@ public class PostServiceImpl implements PostService {
                 Boolean.TRUE.equals(post.getIsPending()),
                 Boolean.TRUE.equals(post.getIsRejected()),
                 post.getFlaggedMatchedPostId(),
-                post.getFlaggedMatchedAuthorDisplayName()
+                post.getFlaggedMatchedAuthorDisplayName(),
+                post.getVisibility() == null ? PostVisibility.PUBLIC.name() : post.getVisibility().name(),
+                allowedViewers
         );
+    }
+
+    private void applyPostAudience(Post post, User owner, PostVisibility requestedVisibility, List<UUID> requestedUserIds) {
+        PostVisibility visibility = requestedVisibility == null ? PostVisibility.PUBLIC : requestedVisibility;
+        post.updateVisibility(visibility);
+
+        postAllowedViewerRepository.deleteByPostId(post.getId());
+
+        if (visibility != PostVisibility.SELECTED_USERS) {
+            return;
+        }
+
+        List<UUID> distinctUserIds = new ArrayList<>(new LinkedHashSet<>(safeList(requestedUserIds)));
+        if (distinctUserIds.isEmpty()) {
+            throw new IllegalArgumentException("Please select at least one follower for selected audience visibility");
+        }
+
+        List<User> selectedUsers = userRepository.findAllById(distinctUserIds);
+        if (selectedUsers.size() != distinctUserIds.size()) {
+            throw new IllegalArgumentException("Some selected users were not found");
+        }
+
+        List<UUID> followerIds = followRepository.findFollowerIdsByFollowingIdAndFollowerIdsIn(owner.getId(), distinctUserIds);
+        Set<UUID> followerIdSet = new HashSet<>(followerIds);
+        for (UUID userId : distinctUserIds) {
+            if (!followerIdSet.contains(userId)) {
+                throw new IllegalArgumentException("Selected users must be followers of the post owner");
+            }
+        }
+
+        List<PostAllowedViewer> viewers = selectedUsers.stream()
+                .map(selectedUser -> PostAllowedViewer.create(post, selectedUser))
+                .toList();
+        postAllowedViewerRepository.saveAll(viewers);
+    }
+
+    private boolean canViewerAccessPost(Post post, String viewerUsername) {
+        if (post == null || Boolean.TRUE.equals(post.getIsDeleted()) || Boolean.TRUE.equals(post.getIsPending())) {
+            return false;
+        }
+        if (viewerUsername != null && post.getUser() != null && viewerUsername.equals(post.getUser().getUsername())) {
+            return true;
+        }
+
+        PostVisibility visibility = post.getVisibility() == null ? PostVisibility.PUBLIC : post.getVisibility();
+        return switch (visibility) {
+            case PUBLIC -> true;
+            case ONLY_ME -> false;
+            case FOLLOWERS -> viewerUsername != null
+                    && followRepository.existsByFollowerUsernameAndFollowingUsername(viewerUsername, post.getUser().getUsername());
+            case SELECTED_USERS -> viewerUsername != null
+                    && postAllowedViewerRepository.existsByPostIdAndUserUsername(post.getId(), viewerUsername);
+        };
+    }
+
+    private List<PostAllowedViewerResponse> resolveAllowedViewers(Post post, String viewerUsername) {
+        if (viewerUsername == null || post.getUser() == null || !viewerUsername.equals(post.getUser().getUsername())) {
+            return List.of();
+        }
+
+        List<PostAllowedViewer> allowedViewers = postAllowedViewerRepository.findByPostIdWithUser(post.getId());
+        if (allowedViewers.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> userIds = allowedViewers.stream()
+                .map(item -> item.getUser().getId())
+                .toList();
+        Map<UUID, String> avatarByUserId = new HashMap<>();
+        for (Profile profile : profileRepository.findByUserIdIn(userIds)) {
+            if (profile.getUser() == null) {
+                continue;
+            }
+            avatarByUserId.put(profile.getUser().getId(), profile.getAvatarUrl());
+        }
+
+        return allowedViewers.stream()
+                .map(item -> new PostAllowedViewerResponse(
+                        item.getUser().getId(),
+                        item.getUser().getUsername(),
+                        item.getUser().getDisplayName(),
+                        avatarByUserId.get(item.getUser().getId())
+                ))
+                .toList();
     }
 
     private <T> List<T> safeList(List<T> values) {

@@ -11,5 +11,7 @@ public interface FollowService {
 
     FollowUserFeedResponse getFollowers(String username, int page, int size);
 
+    FollowUserFeedResponse searchFollowers(String username, String query, int page, int size);
+
     FollowUserFeedResponse getFollowing(String username, int page, int size);
 }

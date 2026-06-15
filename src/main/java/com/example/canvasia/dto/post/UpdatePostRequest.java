@@ -3,6 +3,7 @@ package com.example.canvasia.dto.post;
 import java.util.List;
 import java.util.UUID;
 
+import com.example.canvasia.enums.PostVisibility;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
@@ -12,6 +13,8 @@ public record UpdatePostRequest(
         List<String> tags,
         List<UUID> deleteMediaIds,
         List<@Valid ReplaceMediaRequest> replaceMedia,
-        List<@Valid ThumbnailCropRequest> thumbnailCrops
+        List<@Valid ThumbnailCropRequest> thumbnailCrops,
+        PostVisibility visibility,
+        List<UUID> allowedViewerUserIds
 ) {
 }
