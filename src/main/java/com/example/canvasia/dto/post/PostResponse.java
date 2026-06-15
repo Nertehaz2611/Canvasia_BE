@@ -21,6 +21,8 @@ public record PostResponse(
         boolean isPending,
         boolean isRejected,
         UUID flaggedMatchedPostId,
-        String flaggedMatchedAuthorDisplayName
+        String flaggedMatchedAuthorDisplayName,
+        String visibility,
+        List<PostAllowedViewerResponse> allowedViewers
 ) {
 }

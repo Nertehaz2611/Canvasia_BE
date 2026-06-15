@@ -32,7 +32,7 @@ public class PostRequestResolver {
             return null;
         }
 
-        CreatePostRequest fallback = new CreatePostRequest(caption, normalizeTags(tags), List.of());
+        CreatePostRequest fallback = new CreatePostRequest(caption, normalizeTags(tags), List.of(), null, List.of());
         validate(fallback);
         return fallback;
     }
@@ -48,7 +48,7 @@ public class PostRequestResolver {
             return null;
         }
 
-        UpdatePostRequest fallback = new UpdatePostRequest(caption, normalizeTags(tags), List.of(), List.of(), List.of());
+        UpdatePostRequest fallback = new UpdatePostRequest(caption, normalizeTags(tags), List.of(), List.of(), List.of(), null, List.of());
         validate(fallback);
         return fallback;
     }

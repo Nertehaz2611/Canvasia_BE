@@ -12,6 +12,7 @@ import com.example.canvasia.entity.PostTag;
 import com.example.canvasia.repository.CommentLikeRepository;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.PostLikeRepository;
+import com.example.canvasia.repository.PostAllowedViewerRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.PostReportRepository;
 import com.example.canvasia.repository.PostSaveRepository;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class PostDeletionServiceImpl implements PostDeletionService {
 
     private final PostRepository postRepository;
+    private final PostAllowedViewerRepository postAllowedViewerRepository;
     private final PostTagRepository postTagRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostSaveRepository postSaveRepository;
@@ -53,6 +55,7 @@ public class PostDeletionServiceImpl implements PostDeletionService {
         postLikeRepository.deleteByPostId(postId);
         postSaveRepository.deleteByPostId(postId);
         postReportRepository.deleteByPostId(postId);
+        postAllowedViewerRepository.deleteByPostId(postId);
 
         List<PostTag> postTags = postTagRepository.findByPostId(postId);
         if (!postTags.isEmpty()) {

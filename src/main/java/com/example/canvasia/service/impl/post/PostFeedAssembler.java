@@ -13,17 +13,21 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.example.canvasia.dto.post.MediaItemResponse;
+import com.example.canvasia.dto.post.PostAllowedViewerResponse;
 import com.example.canvasia.dto.post.PostResponse;
 import com.example.canvasia.dto.post.ThumbnailItemResponse;
 import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.MediaVariant;
 import com.example.canvasia.entity.Post;
+import com.example.canvasia.entity.PostAllowedViewer;
 import com.example.canvasia.entity.Profile;
 import com.example.canvasia.enums.MediaVariantType;
+import com.example.canvasia.enums.PostVisibility;
 import com.example.canvasia.repository.CommentRepository;
 import com.example.canvasia.repository.MediaRepository;
 import com.example.canvasia.repository.MediaVariantRepository;
 import com.example.canvasia.repository.PostLikeRepository;
+import com.example.canvasia.repository.PostAllowedViewerRepository;
 import com.example.canvasia.repository.PostSaveRepository;
 import com.example.canvasia.repository.PostTagRepository;
 import com.example.canvasia.repository.ProfileRepository;
@@ -38,6 +42,7 @@ public class PostFeedAssembler {
     private final MediaVariantRepository mediaVariantRepository;
     private final PostTagRepository postTagRepository;
         private final PostLikeRepository postLikeRepository;
+        private final PostAllowedViewerRepository postAllowedViewerRepository;
         private final PostSaveRepository postSaveRepository;
         private final CommentRepository commentRepository;
         private final ProfileRepository profileRepository;
@@ -89,6 +94,7 @@ public class PostFeedAssembler {
         }
 
         Map<UUID, String> avatarUrlByUserId = loadAvatarUrls(posts.stream().map(post -> post.getUser().getId()).toList());
+        Map<UUID, List<PostAllowedViewerResponse>> allowedViewerByPostId = buildAllowedViewerMap(posts, viewerUsername);
 
         return posts.stream()
                 .map(post -> new PostResponse(
@@ -112,10 +118,51 @@ public class PostFeedAssembler {
                         Boolean.TRUE.equals(post.getIsPending()),
                         Boolean.TRUE.equals(post.getIsRejected()),
                         post.getFlaggedMatchedPostId(),
-                        post.getFlaggedMatchedAuthorDisplayName()
+                                                post.getFlaggedMatchedAuthorDisplayName(),
+                                                post.getVisibility() == null ? PostVisibility.PUBLIC.name() : post.getVisibility().name(),
+                                                allowedViewerByPostId.getOrDefault(post.getId(), List.of())
                 ))
                 .toList();
     }
+
+        private Map<UUID, List<PostAllowedViewerResponse>> buildAllowedViewerMap(List<Post> posts, String viewerUsername) {
+                if (posts == null || posts.isEmpty() || viewerUsername == null || viewerUsername.isBlank()) {
+                        return Map.of();
+                }
+
+                List<UUID> ownedPostIds = posts.stream()
+                                .filter(post -> post.getUser() != null && viewerUsername.equals(post.getUser().getUsername()))
+                                .map(Post::getId)
+                                .toList();
+                if (ownedPostIds.isEmpty()) {
+                        return Map.of();
+                }
+
+                List<PostAllowedViewer> rows = postAllowedViewerRepository.findByPostIdInWithUser(ownedPostIds);
+                if (rows.isEmpty()) {
+                        return Map.of();
+                }
+
+                List<UUID> viewerIds = rows.stream()
+                                .map(item -> item.getUser().getId())
+                                .distinct()
+                                .toList();
+                Map<UUID, String> avatarByUserId = loadAvatarUrls(viewerIds);
+
+                Map<UUID, List<PostAllowedViewerResponse>> map = new HashMap<>();
+                for (PostAllowedViewer row : rows) {
+                        UUID postId = row.getPost().getId();
+                        PostAllowedViewerResponse item = new PostAllowedViewerResponse(
+                                        row.getUser().getId(),
+                                        row.getUser().getUsername(),
+                                        row.getUser().getDisplayName(),
+                                        avatarByUserId.get(row.getUser().getId())
+                        );
+                        map.computeIfAbsent(postId, ignored -> new java.util.ArrayList<>()).add(item);
+                }
+
+                return map;
+        }
 
     public ThumbnailItemResponse toThumbnailItemResponse(MediaVariant variant) {
         Media media = variant.getMedia();

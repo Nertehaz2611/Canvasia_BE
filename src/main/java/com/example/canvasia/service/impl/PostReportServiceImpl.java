@@ -10,8 +10,11 @@ import com.example.canvasia.dto.post.CreatePostReportRequest;
 import com.example.canvasia.entity.Post;
 import com.example.canvasia.entity.PostReport;
 import com.example.canvasia.entity.User;
+import com.example.canvasia.enums.PostVisibility;
 import com.example.canvasia.enums.ReportReason;
 import com.example.canvasia.exception.DomainValidationException;
+import com.example.canvasia.repository.FollowRepository;
+import com.example.canvasia.repository.PostAllowedViewerRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.PostReportRepository;
 import com.example.canvasia.repository.UserRepository;
@@ -26,6 +29,8 @@ public class PostReportServiceImpl implements PostReportService {
     private final PostReportRepository postReportRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final FollowRepository followRepository;
+    private final PostAllowedViewerRepository postAllowedViewerRepository;
 
     @Override
     @Transactional
@@ -38,6 +43,10 @@ public class PostReportServiceImpl implements PostReportService {
 
         if (post.getUser().getUsername().equals(reporterUsername)) {
             throw new DomainValidationException("CANNOT_REPORT_OWN_POST", "You cannot report your own post");
+        }
+
+        if (!canViewerAccessPost(post, reporterUsername)) {
+            throw new DomainValidationException("POST_NOT_FOUND", "Post not found");
         }
 
         if (postReportRepository.existsByReporterUsernameAndPostId(reporterUsername, postId)) {
@@ -56,5 +65,22 @@ public class PostReportServiceImpl implements PostReportService {
 
         PostReport report = PostReport.create(reporter, post, reasons, otherReason);
         postReportRepository.save(report);
+    }
+
+    private boolean canViewerAccessPost(Post post, String viewerUsername) {
+        if (Boolean.TRUE.equals(post.getIsDeleted()) || Boolean.TRUE.equals(post.getIsPending())) {
+            return false;
+        }
+
+        PostVisibility visibility = post.getVisibility() == null ? PostVisibility.PUBLIC : post.getVisibility();
+        return switch (visibility) {
+            case PUBLIC -> true;
+            case ONLY_ME -> false;
+            case FOLLOWERS -> followRepository.existsByFollowerUsernameAndFollowingUsername(
+                    viewerUsername,
+                    post.getUser().getUsername()
+            );
+            case SELECTED_USERS -> postAllowedViewerRepository.existsByPostIdAndUserUsername(post.getId(), viewerUsername);
+        };
     }
 }

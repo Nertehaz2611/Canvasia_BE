@@ -51,6 +51,16 @@ public class FollowController {
         return followService.getFollowers(username, page, size);
     }
 
+    @GetMapping("/{username}/followers/search")
+    public FollowUserFeedResponse searchFollowers(
+            @PathVariable String username,
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return followService.searchFollowers(username, query, page, size);
+    }
+
     @GetMapping("/{username}/following")
     public FollowUserFeedResponse getFollowing(
             @PathVariable String username,

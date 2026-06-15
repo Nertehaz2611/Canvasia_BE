@@ -20,7 +20,83 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     long countByIsDeletedFalseAndIsPendingFalse();
 
-    Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingFalse(String username, Pageable pageable);
+    @Query(
+            value = """
+                    select p.*
+                    from posts p
+                    join users u on u.id = p.user_id
+                    where u.username = :username
+                      and coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
+                      and (
+                        :viewerUsername = :username
+                        or coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                    order by p.created_at desc, p.id desc
+                    """,
+            countQuery = """
+                    select count(*)
+                    from posts p
+                    join users u on u.id = p.user_id
+                    where u.username = :username
+                      and coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
+                      and (
+                        :viewerUsername = :username
+                        or coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                    """,
+            nativeQuery = true
+    )
+    Page<Post> findVisiblePostsByUserUsername(
+            @Param("username") String username,
+            @Param("viewerUsername") String viewerUsername,
+            Pageable pageable
+    );
 
     Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingTrue(String username, Pageable pageable);
 
@@ -43,6 +119,35 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where coalesce(p.is_deleted, false) = false
                       and coalesce(p.is_pending, false) = false
                       and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                      and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
                       )
@@ -57,6 +162,35 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where coalesce(p.is_deleted, false) = false
                       and coalesce(p.is_pending, false) = false
                       and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                      and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
                       )
@@ -68,30 +202,98 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             @Param("tagName") String tagName,
             @Param("legacyTagName") String legacyTagName,
             @Param("tagType") String tagType,
+            @Param("viewerUsername") String viewerUsername,
             Pageable pageable
     );
 
-    @Query("""
-        select p from Post p
-        where p.isDeleted = false
-          and p.isPending = false
-        order by p.createdAt desc, p.id desc
-        """)
-    List<Post> findDiscoverFirstPage(Pageable pageable);
+    @Query(
+            value = """
+                    select p.*
+                    from posts p
+                    where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
+                      and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                    order by p.created_at desc, p.id desc
+                    """,
+            nativeQuery = true
+    )
+    List<Post> findDiscoverFirstPage(@Param("viewerUsername") String viewerUsername, Pageable pageable);
 
-    @Query("""
-        select p from Post p
-        where p.isDeleted = false
-          and p.isPending = false
-          and (
-            p.createdAt < :cursorCreatedAt
-            or (p.createdAt = :cursorCreatedAt and p.id < :cursorId)
-          )
-        order by p.createdAt desc, p.id desc
-        """)
+    @Query(
+            value = """
+                    select p.*
+                    from posts p
+                    where coalesce(p.is_deleted, false) = false
+                      and coalesce(p.is_pending, false) = false
+                      and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                      and (
+                        p.created_at < :cursorCreatedAt
+                        or (p.created_at = :cursorCreatedAt and p.id < :cursorId)
+                      )
+                    order by p.created_at desc, p.id desc
+                    """,
+            nativeQuery = true
+    )
     List<Post> findDiscoverSlice(
         @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
         @Param("cursorId") UUID cursorId,
+        @Param("viewerUsername") String viewerUsername,
         Pageable pageable
     );
 
@@ -103,6 +305,35 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join tags t on t.id = pt.tag_id
                     where coalesce(p.is_deleted, false) = false
                       and coalesce(p.is_pending, false) = false
+                      and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
                       and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
@@ -116,6 +347,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
         @Param("tagName") String tagName,
         @Param("legacyTagName") String legacyTagName,
         @Param("tagType") String tagType,
+      @Param("viewerUsername") String viewerUsername,
         Pageable pageable
     );
 
@@ -127,6 +359,35 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join tags t on t.id = pt.tag_id
                     where coalesce(p.is_deleted, false) = false
                       and coalesce(p.is_pending, false) = false
+                      and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
                       and (
                         lower(trim(t.name)) = lower(trim(:tagName))
                         or lower(trim(t.name)) = lower(trim(:legacyTagName))
@@ -146,6 +407,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
         @Param("tagType") String tagType,
         @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
         @Param("cursorId") UUID cursorId,
+      @Param("viewerUsername") String viewerUsername,
         Pageable pageable
     );
 
@@ -156,6 +418,35 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where coalesce(p.is_deleted, false) = false
                       and coalesce(p.is_pending, false) = false
                       and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
+                      and (
                         lower(coalesce(p.caption, '')) like lower(concat('%', :query, '%'))
                         or to_tsvector('simple', coalesce(p.caption, '')) @@ websearch_to_tsquery('simple', :query)
                       )
@@ -165,6 +456,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     )
     List<Post> searchDiscoverFirstPage(
             @Param("query") String query,
+          @Param("viewerUsername") String viewerUsername,
             Pageable pageable
     );
 
@@ -174,6 +466,35 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     from posts p
                     where coalesce(p.is_deleted, false) = false
                       and coalesce(p.is_pending, false) = false
+                      and (
+                        coalesce(p.visibility, 'PUBLIC') = 'PUBLIC'
+                        or (
+                          :viewerUsername is not null
+                          and exists (select 1 from users owner where owner.id = p.user_id and owner.username = :viewerUsername)
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'FOLLOWERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from follows f
+                            join users fu on fu.id = f.follower_id
+                            where f.following_id = p.user_id
+                              and fu.username = :viewerUsername
+                          )
+                        )
+                        or (
+                          coalesce(p.visibility, 'PUBLIC') = 'SELECTED_USERS'
+                          and :viewerUsername is not null
+                          and exists (
+                            select 1
+                            from post_allowed_viewers pav
+                            join users au on au.id = pav.user_id
+                            where pav.post_id = p.id
+                              and au.username = :viewerUsername
+                          )
+                        )
+                      )
                       and (
                         lower(coalesce(p.caption, '')) like lower(concat('%', :query, '%'))
                         or to_tsvector('simple', coalesce(p.caption, '')) @@ websearch_to_tsquery('simple', :query)
@@ -190,6 +511,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             @Param("query") String query,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") UUID cursorId,
+          @Param("viewerUsername") String viewerUsername,
             Pageable pageable
     );
 }

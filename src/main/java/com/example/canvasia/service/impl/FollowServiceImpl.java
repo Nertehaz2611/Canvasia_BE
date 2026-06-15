@@ -81,6 +81,28 @@ public class FollowServiceImpl implements FollowService {
 
     @Override
     @Transactional(readOnly = true)
+    public FollowUserFeedResponse searchFollowers(String username, String query, int page, int size) {
+        String safeQuery = query == null ? "" : query.trim();
+        if (safeQuery.isEmpty()) {
+            return new FollowUserFeedResponse(List.of(), Math.max(page, 0), Math.max(size, 1), false);
+        }
+
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
+        Page<Follow> followPage = followRepository.searchFollowersByFollowingUsername(username, safeQuery, pageable);
+        List<User> users = followPage.getContent().stream()
+                .map(Follow::getFollower)
+                .toList();
+
+        return new FollowUserFeedResponse(
+                toFollowUsers(users),
+                followPage.getNumber(),
+                followPage.getSize(),
+                followPage.hasNext()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public FollowUserFeedResponse getFollowing(String username, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Follow> followPage = followRepository.findByFollowerUsernameOrderByCreatedAtDesc(username, pageable);

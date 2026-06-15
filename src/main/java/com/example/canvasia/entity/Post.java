@@ -4,9 +4,12 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.example.canvasia.entity.base.AuditableEntity;
+import com.example.canvasia.enums.PostVisibility;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -61,6 +64,11 @@ public class Post extends AuditableEntity {
     @Column(name = "flagged_matched_author_display_name", length = 100)
     private String flaggedMatchedAuthorDisplayName;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private PostVisibility visibility = PostVisibility.PUBLIC;
+
     public static Post create(User user, String caption) {
         validate(user);
 
@@ -85,6 +93,10 @@ public class Post extends AuditableEntity {
     public void flagWith(UUID matchedPostId, String authorDisplayName) {
         this.flaggedMatchedPostId = matchedPostId;
         this.flaggedMatchedAuthorDisplayName = authorDisplayName;
+    }
+
+    public void updateVisibility(PostVisibility newVisibility) {
+        this.visibility = newVisibility == null ? PostVisibility.PUBLIC : newVisibility;
     }
 
     public void moveToTrash() {

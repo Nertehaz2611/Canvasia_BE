@@ -43,10 +43,11 @@ public class PostQueryService {
                 rows = postRepository.findDiscoverSlice(
                         decodedCursor.createdAt(),
                         decodedCursor.id(),
+                        viewerUsername,
                         PageRequest.of(0, safeLimit + 1)
                 );
             } else {
-                rows = postRepository.findDiscoverFirstPage(PageRequest.of(0, safeLimit + 1));
+                rows = postRepository.findDiscoverFirstPage(viewerUsername, PageRequest.of(0, safeLimit + 1));
             }
         } else {
             PostTagResolver.NormalizedTag normalizedTag = postTagResolver.parse(tag);
@@ -59,6 +60,7 @@ public class PostQueryService {
                         tagType,
                         decodedCursor.createdAt(),
                         decodedCursor.id(),
+                        viewerUsername,
                         PageRequest.of(0, safeLimit + 1)
                 );
             } else {
@@ -66,6 +68,7 @@ public class PostQueryService {
                         normalizedTag.name(),
                         legacyTagName,
                         tagType,
+                        viewerUsername,
                         PageRequest.of(0, safeLimit + 1)
                 );
             }
@@ -90,9 +93,10 @@ public class PostQueryService {
                         safeQuery,
                         decodedCursor.createdAt(),
                         decodedCursor.id(),
+                    viewerUsername,
                         PageRequest.of(0, safeLimit + 1)
                 )
-                : postRepository.searchDiscoverFirstPage(safeQuery, PageRequest.of(0, safeLimit + 1));
+                : postRepository.searchDiscoverFirstPage(safeQuery, viewerUsername, PageRequest.of(0, safeLimit + 1));
 
             return buildCursorFeed(rows, safeLimit, viewerUsername);
     }
@@ -101,9 +105,10 @@ public class PostQueryService {
     public PostFeedResponse getPostsByUser(String viewerUsername, String username, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
-        PageRequest pageable = buildPostPageRequest(safePage, safeSize);
+        PageRequest pageable = PageRequest.of(safePage, safeSize);
 
-        Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedFalseAndIsPendingFalse(username, pageable);
+        String safeViewerUsername = viewerUsername == null || viewerUsername.isBlank() ? null : viewerUsername;
+        Page<Post> posts = postRepository.findVisiblePostsByUserUsername(username, safeViewerUsername, pageable);
         return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), viewerUsername), safePage, safeSize, posts.hasNext());
     }
 
@@ -131,7 +136,7 @@ public class PostQueryService {
     public PostFeedResponse getPostsByTag(String viewerUsername, String tag, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
-        PageRequest pageable = buildPostPageRequest(safePage, safeSize);
+        PageRequest pageable = PageRequest.of(safePage, safeSize);
 
         PostTagResolver.NormalizedTag normalizedTag = postTagResolver.parse(tag);
         String legacyTagName = stripPrefix(normalizedTag.name());
@@ -139,6 +144,7 @@ public class PostQueryService {
             normalizedTag.name(),
             legacyTagName,
             normalizedTag.type().name(),
+            viewerUsername,
             pageable
         );
 
