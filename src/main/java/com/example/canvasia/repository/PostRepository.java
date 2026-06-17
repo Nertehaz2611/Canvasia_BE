@@ -514,4 +514,10 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
           @Param("viewerUsername") String viewerUsername,
             Pageable pageable
     );
+
+    @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id = :postId")
+    Optional<Post> findByIdWithUserEager(@Param("postId") UUID postId);
+
+    @Query(value = "SELECT user_id FROM posts WHERE id = :postId", nativeQuery = true)
+    Optional<UUID> findUserIdByPostId(@Param("postId") UUID postId);
 }
