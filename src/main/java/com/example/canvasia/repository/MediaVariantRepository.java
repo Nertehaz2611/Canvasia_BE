@@ -31,6 +31,7 @@ public interface MediaVariantRepository extends JpaRepository<MediaVariant, UUID
         where mv.type = :type
           and mv.media.post.isDeleted = false
           and mv.media.post.isPending = false
+          and mv.media.post.isRejected = false
           and (mv.media.post.visibility is null or mv.media.post.visibility = com.example.canvasia.enums.PostVisibility.PUBLIC)
         order by mv.media.post.createdAt desc, mv.media.id desc
         """)
@@ -45,6 +46,7 @@ public interface MediaVariantRepository extends JpaRepository<MediaVariant, UUID
         where mv.type = :type
           and mv.media.post.isDeleted = false
           and mv.media.post.isPending = false
+          and mv.media.post.isRejected = false
           and (mv.media.post.visibility is null or mv.media.post.visibility = com.example.canvasia.enums.PostVisibility.PUBLIC)
           and (
             mv.media.post.createdAt < :cursorCreatedAt

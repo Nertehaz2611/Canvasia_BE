@@ -118,7 +118,7 @@ public class PostQueryService {
         int safeSize = clampPageSize(size, MAX_POST_PAGE_SIZE);
         PageRequest pageable = buildPostPageRequest(safePage, safeSize);
 
-        Page<Post> posts = postRepository.findByUserUsernameAndIsDeletedFalseAndIsPendingTrue(username, pageable);
+        Page<Post> posts = postRepository.findPendingOrRejectedPostsByOwner(username, pageable);
         return new PostFeedResponse(postFeedAssembler.toPostResponses(posts.getContent(), username), safePage, safeSize, posts.hasNext());
     }
 

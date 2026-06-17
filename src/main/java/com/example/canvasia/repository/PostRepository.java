@@ -98,7 +98,16 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             Pageable pageable
     );
 
-    Page<Post> findByUserUsernameAndIsDeletedFalseAndIsPendingTrue(String username, Pageable pageable);
+        @Query("""
+          select p from Post p
+          where p.user.username = :username
+            and p.isDeleted = false
+            and (coalesce(p.isPending, false) = true or coalesce(p.isRejected, false) = true)
+          """)
+        Page<Post> findPendingOrRejectedPostsByOwner(
+          @Param("username") String username,
+          Pageable pageable
+        );
 
     Page<Post> findByIsDeletedFalseAndIsPendingTrueAndIsRejectedFalse(Pageable pageable);
 
