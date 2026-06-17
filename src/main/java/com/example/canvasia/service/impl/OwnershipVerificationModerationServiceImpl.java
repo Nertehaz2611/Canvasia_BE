@@ -236,7 +236,8 @@ public class OwnershipVerificationModerationServiceImpl implements OwnershipVeri
         private String userId;
         
         @lombok.Builder.Default
-        private String callbackUrl = "http://localhost:8081/api/ownership-verifications/callback";
+        // private String callbackUrl = "http://localhost:8081/api/ownership-verifications/callback";
+        private String callbackUrl = "https://canvasia-be.onrender.com/api/ownership-verifications/callback";
     }
 
     private record OwnershipCandidateMedia(String mediaId, String mediaUrl, String mediaType) {
