@@ -198,6 +198,8 @@ public class OwnershipVerificationModerationServiceImpl implements OwnershipVeri
 
         // Mark post as pending for copyright violation and keep source metadata for admin audit.
         violatingPost.markPending(true);
+        // Reset stale rejected status so this post appears in pending review again.
+        violatingPost.markRejected(false);
         violatingPost.flagWith(referencePostId, ownedVerification.getUser().getDisplayName());
         postRepository.save(violatingPost);
 

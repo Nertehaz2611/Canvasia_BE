@@ -142,6 +142,8 @@ public class ModerationServiceImpl implements ModerationService {
 
         boolean wasPending = Boolean.TRUE.equals(post.getIsPending());
         post.markPending(true);
+        // Clear prior rejection state so the post re-enters pending review correctly.
+        post.markRejected(false);
         if (referencePostId != null || referenceAuthorDisplayName != null) {
             post.flagWith(referencePostId, referenceAuthorDisplayName);
             logger.info("[Moderation] Post {} marked PENDING (original author='{}', referencePostId={})",
