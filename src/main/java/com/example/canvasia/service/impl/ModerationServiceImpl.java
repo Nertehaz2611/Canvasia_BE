@@ -13,6 +13,7 @@ import com.example.canvasia.entity.Media;
 import com.example.canvasia.entity.Post;
 import com.example.canvasia.entity.User;
 import com.example.canvasia.repository.MediaRepository;
+import com.example.canvasia.repository.OwnershipVerificationMediaRepository;
 import com.example.canvasia.repository.PostRepository;
 import com.example.canvasia.repository.UserRepository;
 import com.example.canvasia.service.interfaces.ModerationService;
@@ -28,6 +29,7 @@ public class ModerationServiceImpl implements ModerationService {
     private static final Logger logger = LoggerFactory.getLogger(ModerationServiceImpl.class);
 
     private final MediaRepository mediaRepository;
+    private final OwnershipVerificationMediaRepository ownershipVerificationMediaRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final PostDeletionService postDeletionService;
@@ -49,14 +51,45 @@ public class ModerationServiceImpl implements ModerationService {
                 ? mediaRepository.findByIdWithPostAndUser(request.matchedMediaId()).orElse(null)
                 : null;
 
-        logCallback(request, media, matchedMedia);
+        UUID matchedOwnerUserId = matchedMedia != null ? matchedMedia.getUserId() : null;
+        UUID referencePostId = null;
+        String referenceAuthorDisplayName = null;
+
+        if (matchedMedia != null && matchedMedia.getPost() != null) {
+            referencePostId = matchedMedia.getPost().getId();
+            referenceAuthorDisplayName = matchedMedia.getPost().getUser() != null
+                ? matchedMedia.getPost().getUser().getDisplayName()
+                : null;
+        }
+
+        if (matchedOwnerUserId == null && request.matchedMediaId() != null) {
+            matchedOwnerUserId = ownershipVerificationMediaRepository
+                .findOwnerUserIdByMediaId(request.matchedMediaId())
+                .orElse(null);
+            referencePostId = ownershipVerificationMediaRepository
+                .findOwnerPostIdByMediaId(request.matchedMediaId())
+                .orElse(referencePostId);
+            referenceAuthorDisplayName = ownershipVerificationMediaRepository
+                .findOwnerDisplayNameByMediaId(request.matchedMediaId())
+                .orElse(referenceAuthorDisplayName);
+        }
+
+        logCallback(request, media, matchedMedia, matchedOwnerUserId, referencePostId);
 
         Post post = media.getPost();
         if (post == null || Boolean.TRUE.equals(post.getIsDeleted())) {
             return;
         }
 
-        applyModerationStatus(request.status(), media.getUserId(), post, matchedMedia);
+        applyModerationStatus(
+            request.status(),
+            media.getUserId(),
+            post,
+            matchedOwnerUserId,
+            referencePostId,
+            referenceAuthorDisplayName,
+            request.matchedMediaId()
+        );
     }
 
     @Override
@@ -80,13 +113,26 @@ public class ModerationServiceImpl implements ModerationService {
         postDeletionService.hardDeletePost(post);
     }
 
-    private void applyModerationStatus(String status, UUID uploaderUserId, Post post, Media matchedMedia) {
+    private void applyModerationStatus(
+            String status,
+            UUID uploaderUserId,
+            Post post,
+            UUID matchedOwnerUserId,
+            UUID referencePostId,
+            String referenceAuthorDisplayName,
+            UUID matchedMediaId
+    ) {
         if (status == null || !"PENDING".equals(status.trim().toUpperCase(Locale.ROOT))) {
             return;
         }
 
-        UUID originalAuthorUserId = matchedMedia != null ? matchedMedia.getUserId() : null;
-        boolean sameOwner = uploaderUserId != null && uploaderUserId.equals(originalAuthorUserId);
+        if (matchedOwnerUserId == null) {
+            logger.warn("[Moderation] Skip pending for post {} — unmatched media owner (matchedMediaId={})",
+                    post.getId(), matchedMediaId);
+            return;
+        }
+
+        boolean sameOwner = uploaderUserId != null && uploaderUserId.equals(matchedOwnerUserId);
 
         if (sameOwner) {
             logger.info("[Moderation] Skipped pending for post {} — same owner re-upload (userId={})",
@@ -96,12 +142,10 @@ public class ModerationServiceImpl implements ModerationService {
 
         boolean wasPending = Boolean.TRUE.equals(post.getIsPending());
         post.markPending(true);
-        if (matchedMedia != null && matchedMedia.getPost() != null) {
-            Post matchedPost = matchedMedia.getPost();
-            String authorDisplayName = matchedPost.getUser() != null
-                    ? matchedPost.getUser().getDisplayName() : null;
-            post.flagWith(matchedPost.getId(), authorDisplayName);
-            logger.info("[Moderation] Post {} marked PENDING (original author='{}')", post.getId(), authorDisplayName);
+        if (referencePostId != null || referenceAuthorDisplayName != null) {
+            post.flagWith(referencePostId, referenceAuthorDisplayName);
+            logger.info("[Moderation] Post {} marked PENDING (original author='{}', referencePostId={})",
+                    post.getId(), referenceAuthorDisplayName, referencePostId);
         }
         postRepository.save(post);
 
@@ -110,12 +154,19 @@ public class ModerationServiceImpl implements ModerationService {
         }
     }
 
-    private void logCallback(ModerationCallbackRequest request, Media media, Media matchedMedia) {
-        UUID originalAuthorUserId = matchedMedia != null ? matchedMedia.getUserId() : null;
-        logger.info("[Moderation] mediaId={} uploaderUserId={} matchedMediaId={} originalAuthorUserId={} similarity={}",
+        private void logCallback(
+            ModerationCallbackRequest request,
+            Media media,
+            Media matchedMedia,
+            UUID matchedOwnerUserId,
+            UUID referencePostId
+        ) {
+        logger.info("[Moderation] mediaId={} uploaderUserId={} matchedMediaId={} matchedOwnerUserId={} referencePostId={} similarity={} matchedFromMediaTable={}",
                 request.mediaId(), media.getUserId(),
-                request.matchedMediaId(), originalAuthorUserId,
-                request.similarity());
+            request.matchedMediaId(), matchedOwnerUserId,
+            referencePostId,
+            request.similarity(),
+            matchedMedia != null);
     }
 
     private Post getPendingPost(UUID postId) {
